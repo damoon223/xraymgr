@@ -1,18 +1,60 @@
-# Python
+# --- Python bytecode / cache ---
 __pycache__/
 *.py[cod]
-*.pyo
-*.pyd
-*.sqlite3
+*$py.class
 
-# venv
+# --- Virtualenvs ---
+env/
 venv/
-.env/
-.env*/
 .venv/
+ENV/
+env.bak/
+venv.bak/
 
-# IDE
+# --- Distribution / build artefacts ---
+build/
+dist/
+.eggs/
+*.egg-info/
+*.egg
+*.manifest
+*.spec
+
+# --- Test / coverage ---
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+.pytest_cache/
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+
+# --- Editor / IDE ---
 .vscode/
 .idea/
 *.iml
+
+# --- OS / misc ---
+.DS_Store
+Thumbs.db
+
+# --- Logs ---
+*.log
+
+# --- SQLite / DB files (خواستهٔ خودت) ---
+*.db
+*.sqlite
+*.sqlite3
+
+# --- Text files (خواستهٔ خودت؛ همه txtها نادیده می‌شن) ---
 *.txt
+
+# --- Node / JS (اگه بعداً برای jsbridge چیزی آوردی) ---
+node_modules/
+npm-debug.log*
+yarn-error.log*
+pnpm-lock.yaml
