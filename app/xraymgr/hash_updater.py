@@ -1,5 +1,3 @@
-# app/xraymgr/hash_updater.py
-
 import json
 import hashlib
 import sqlite3
@@ -226,6 +224,12 @@ class ConfigHashUpdater:
         """
         استخراج هویت برای VLESS:
         address/port/id + لایهٔ ترنسپورت (network/tls/sni/host/path/flow/encryption)
+
+        دو حالت را پشتیبانی می‌کند:
+          1) فرم استاندارد Xray:
+             settings.vnext[0].address / port / users[0].id / encryption / flow
+          2) فرم ساده‌شده مثل نمونهٔ داده‌شده:
+             settings.address / port / id / encryption / flow
         """
         try:
             if not isinstance(outbound, dict):
@@ -235,31 +239,43 @@ class ConfigHashUpdater:
             if not isinstance(settings, dict):
                 return None
 
+            # --- حالت ۱: فرم استاندارد Xray با vnext/users ---
+            address = None
+            port = None
+            user_id = None
+            encryption = None
+            flow = None
+
             vnext = settings.get("vnext")
-            if not isinstance(vnext, list) or not vnext:
+            if isinstance(vnext, list) and vnext:
+                server = vnext[0]
+                if isinstance(server, dict):
+                    address = server.get("address")
+                    port = server.get("port")
+                    users = server.get("users")
+                    if isinstance(users, list) and users:
+                        user = users[0]
+                        if isinstance(user, dict):
+                            user_id = user.get("id")
+                            encryption = user.get("encryption")
+                            flow = user.get("flow")
+
+            # --- حالت ۲: فرم ساده‌شده (بدون vnext/users) ---
+            if not address or not port or not user_id:
+                # اگر vnext جواب نداد، سعی کن از فیلدهای مستقیم settings بخوانی
+                address = settings.get("address") or address
+                port = settings.get("port") or port
+                # ممکن است id یا uuid باشد
+                user_id = settings.get("id") or settings.get("uuid") or user_id
+                # encryption و flow اگر قبلاً از vnext نگرفتیم، از همین‌جا بگیریم
+                if encryption is None:
+                    encryption = settings.get("encryption")
+                if flow is None:
+                    flow = settings.get("flow")
+
+            # اگر بعد از هر دو تلاش هنوز اطلاعات کلیدی نداریم، این کانفیگ برای هویت‌سنجی ناقص است
+            if not address or not port or not user_id:
                 return None
-
-            server = vnext[0]
-            if not isinstance(server, dict):
-                return None
-
-            address = server.get("address")
-            port = server.get("port")
-            users = server.get("users")
-
-            if not address or not port or not isinstance(users, list) or not users:
-                return None
-
-            user = users[0]
-            if not isinstance(user, dict):
-                return None
-
-            user_id = user.get("id")
-            if not user_id:
-                return None
-
-            encryption = user.get("encryption")
-            flow = user.get("flow")
 
             # streamSettings
             stream = outbound.get("streamSettings") or {}

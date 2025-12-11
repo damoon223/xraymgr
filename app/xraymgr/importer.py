@@ -1,20 +1,10 @@
 import os
-import threading
+import re
 import sqlite3
-from typing import Optional, List
+import threading
+from typing import List, Optional, Tuple
 
 from .settings import get_db_path
-
-PROTO_PREFIXES = (
-    "vmess://",
-    "vless://",
-    "trojan://",
-    "ss://",
-    "ssr://",
-    "tuic://",
-    "hysteria2://",
-    "hy2://",
-)
 
 
 class ImporterStopped(Exception):
@@ -24,41 +14,53 @@ class ImporterStopped(Exception):
 
 class RawConfigImporter:
     """
-    ایمپورتر برای خواندن raw_configs.txt و پر کردن جدول links.
+    ایمپورت کانفیگ‌ها از فایل raw به جدول links، و سپس نرمالایز URLها.
 
-    منطق فعلی:
-      - هر خط یک url کانفیگ است.
-      - فقط خطوطی که با یکی از پروتکل‌های موردنظر شروع شوند قبول می‌شوند.
-      - در batchهای ۱۰۰۰تایی INSERT OR IGNORE می‌شوند.
-      - فقط ستون url را ست می‌کنیم.
-        بقیه ستون‌ها:
-          * اگر DEFAULT دارند (test_stage, is_alive, is_in_use, needs_replace)
-              → مقدار default تنظیم می‌شود.
-          * اگر DEFAULT ندارند → NULL می‌شوند (config_json, config_hash, is_config_primary, ip, ...)
-      - config_hash بعداً وقتی JSON آماده شد محاسبه و ست می‌شود.
+    دو مرحله اصلی:
+
+      1) خواندن data/raw/raw_configs.txt و وارد کردن هر خط به ستون url در links
+         (با INSERT OR IGNORE برای جلوگیری از تکرار).
+
+      2) نرمالایز URLها در جدول links:
+           - فقط ردیف‌هایی که:
+               * config_hash خالی دارند
+               * is_invalid = 0
+               * is_protocol_unsupported = 0
+           - اگر در یک url چندین کانفیگ (vmess/vless/ss/trojan) چسبیده باشد،
+             آن را به چند url جدا می‌شکنیم، برای هرکدام رکورد جدید می‌سازیم
+             (INSERT OR IGNORE)، و رکورد اصلی را حذف می‌کنیم.
+
+    stats (برای پنل وب):
+      - total_lines: تعداد کل خطوط خوانده‌شده از فایل raw
+      - valid_configs: تعداد خطوط غیرخالی که به‌عنوان کاندید ایمپورت حساب شده‌اند
+      - inserted: تعداد رکوردهای جدیدی که واقعاً در links درج شده‌اند
+      - batches_committed: تعداد دفعات commit در مرحلهٔ ایمپورت
+
+    آمار اضافه:
+      - normalize_batches: تعداد batchهای نرمالایز
+      - normalize_candidates: تعداد URLهایی که multi-link تشخیص داده شده‌اند
+      - normalized_rows: تعداد رکوردهای اصلیِ multi-link که حذف شدند
+      - normalized_new_links: تعداد لینک‌های جدیدی که در نتیجهٔ نرمالایز درج شدند
     """
 
-    def __init__(
-        self,
-        raw_file: Optional[str] = None,
-        batch_size: int = 1000,
-    ) -> None:
-        if raw_file is None:
-            # طبق ساختار پروژه:
-            # /opt/xraymgr/data/raw/raw_configs.txt
-            raw_file = "/opt/xraymgr/data/raw/raw_configs.txt"
+    # برای تشخیص پروتکل‌ها در URL
+    _PROTO_RE = re.compile(r"(vmess|vless|trojan|ss)://", re.IGNORECASE)
 
-        self.raw_file = raw_file
+    def __init__(self, batch_size: int = 1000) -> None:
         self.batch_size = batch_size
-        self._stop_event = threading.Event()
-
         self.stats = {
             "total_lines": 0,
             "valid_configs": 0,
             "inserted": 0,
-            "skipped_invalid": 0,
             "batches_committed": 0,
+            # stats نرمالایزر:
+            "normalize_batches": 0,
+            "normalize_candidates": 0,
+            "normalized_rows": 0,
+            "normalized_new_links": 0,
         }
+        self._stop_event = threading.Event()
+        self._stats_lock = threading.Lock()
 
     # ---------- کنترل توقف ----------
 
@@ -66,125 +68,275 @@ class RawConfigImporter:
         print("[importer] stop requested")
         self._stop_event.set()
 
-    def _check_stopped(self):
+    def _check_stopped(self) -> None:
         if self._stop_event.is_set():
             raise ImporterStopped()
 
-    # ---------- منطق اصلی ----------
+    # ---------- مسیر فایل raw ----------
 
-    def _iter_valid_configs(self):
-        if not os.path.exists(self.raw_file):
-            print(f"[importer] raw configs file not found: {self.raw_file}")
+    @staticmethod
+    def _get_raw_file_path() -> str:
+        """
+        مسیر فایل raw_configs.txt بر اساس ساختار repo:
+
+            /opt/xraymgr/app/xraymgr/importer.py   → __file__
+            /opt/xraymgr                          → BASE_DIR
+            /opt/xraymgr/data/raw/raw_configs.txt → فایل ورودی
+        """
+        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        return os.path.join(base_dir, "data", "raw", "raw_configs.txt")
+
+    # ---------- ابزارهای نرمال‌سازی URL ----------
+
+    def _split_multi_config_url(self, url: str) -> List[str]:
+        """
+        یک رشتهٔ url که ممکن است چند کانفیگ چسبیده داخلش باشد را به چند
+        url جداگانه تبدیل می‌کند.
+
+        مثال:  vless://.....vmess://.....ss://...
+        → [ 'vless://.....', 'vmess://.....', 'ss://...' ]
+
+        اگر فقط یک پروتکل پیدا شود → [url] برمی‌گرداند.
+        اگر هیچ پروتکلی پیدا نشود → [url] (کاری به آن نداریم).
+        """
+        if not url:
+            return []
+        s = str(url).strip()
+        if not s:
+            return []
+
+        matches = list(self._PROTO_RE.finditer(s))
+        if not matches:
+            # نمی‌دانیم چیست؛ به‌عنوان یک URL تکی در نظر گرفته می‌شود
+            return [s]
+        if len(matches) == 1:
+            # تنها یک پروتکل → همین URL تکی است
+            return [s]
+
+        parts: List[str] = []
+        for idx, m in enumerate(matches):
+            start = m.start()
+            end = matches[idx + 1].start() if idx + 1 < len(matches) else len(s)
+            segment = s[start:end].strip()
+            if segment:
+                parts.append(segment)
+        return parts
+
+    # ---------- مرحلهٔ ۱: ایمپورت از فایل raw ----------
+
+    def _import_from_raw_file(self, conn: sqlite3.Connection) -> None:
+        raw_path = self._get_raw_file_path()
+        if not os.path.exists(raw_path):
+            print(f"[importer] raw configs file not found at {raw_path!r}, skipping import step.")
             return
 
-        print(f"[importer] reading raw configs from: {self.raw_file}")
+        print(f"[importer] importing from raw file: {raw_path!r}")
 
-        with open(self.raw_file, "r", encoding="utf-8") as f:
-            for line_number, line in enumerate(f, start=1):
-                self._check_stopped()
-                self.stats["total_lines"] += 1
+        cur = conn.cursor()
+        batch_ops = 0
 
-                url = line.strip()
-                if not url:
-                    self.stats["skipped_invalid"] += 1
-                    continue
-
-                if not url.startswith(PROTO_PREFIXES):
-                    self.stats["skipped_invalid"] += 1
-                    continue
-
-                self.stats["valid_configs"] += 1
-                yield url
-
-    def _get_connection(self) -> sqlite3.Connection:
-        db_path = get_db_path()
-        conn = sqlite3.connect(db_path)
-        conn.row_factory = sqlite3.Row
-        return conn
-
-    def import_configs(self):
-        """
-        نقطه‌ی اصلی اجرا؛ در یک thread background از طریق وب صدا زده می‌شود.
-        """
-        print("[importer] starting import job...")
-        print(f"[importer] using raw file: {self.raw_file}")
-
-        conn = self._get_connection()
         try:
+            with open(raw_path, "r", encoding="utf-8") as f:
+                for line_no, line in enumerate(f, start=1):
+                    self._check_stopped()
+
+                    stripped = line.strip()
+
+                    with self._stats_lock:
+                        self.stats["total_lines"] += 1
+
+                    if not stripped:
+                        # خط خالی
+                        continue
+
+                    with self._stats_lock:
+                        self.stats["valid_configs"] += 1
+
+                    try:
+                        cur.execute(
+                            "INSERT OR IGNORE INTO links (url) VALUES (?)",
+                            (stripped,),
+                        )
+                        if cur.rowcount == 1:
+                            with self._stats_lock:
+                                self.stats["inserted"] += 1
+                    except sqlite3.Error as e:
+                        print(f"[importer] ERROR inserting line {line_no}: {e}")
+                        continue
+
+                    batch_ops += 1
+                    if batch_ops >= self.batch_size:
+                        try:
+                            conn.commit()
+                            with self._stats_lock:
+                                self.stats["batches_committed"] += 1
+                            print(
+                                f"[importer] committed batch of {batch_ops} inserts "
+                                f"(last line_no={line_no})"
+                            )
+                        except sqlite3.Error as e:
+                            print(f"[importer] ERROR committing insert batch: {e}")
+                        batch_ops = 0
+
+        except FileNotFoundError:
+            print(f"[importer] raw file disappeared during import: {raw_path!r}")
+        except UnicodeDecodeError as e:
+            print(f"[importer] encoding error while reading raw file: {e}")
+
+        # commit نهایی اگر چیزی مانده باشد
+        if batch_ops > 0:
+            try:
+                conn.commit()
+                with self._stats_lock:
+                    self.stats["batches_committed"] += 1
+                print(f"[importer] committed final batch of {batch_ops} inserts")
+            except sqlite3.Error as e:
+                print(f"[importer] ERROR committing final insert batch: {e}")
+
+    # ---------- مرحلهٔ ۲: نرمالایز URLها در DB ----------
+
+    def _normalize_links(self, conn: sqlite3.Connection) -> None:
+        """
+        روی جدول links پاس نرمالایز اجرا می‌کند:
+
+          - فقط ردیف‌هایی که:
+              * config_hash خالی دارند
+              * is_invalid = 0
+              * is_protocol_unsupported = 0
+              * url غیرخالی دارند
+
+          - اگر url شامل چندین پروتکل vmess/vless/ss/trojan باشد، به چند
+            url جداگانه شکسته می‌شود، برای هرکدام INSERT OR IGNORE می‌زنیم،
+            و رکورد اصلی را حذف می‌کنیم.
+        """
+        print("[importer] starting URL normalization pass (multi-link splitter)")
+
+        last_id = 0
+
+        while True:
+            self._check_stopped()
+
             cur = conn.cursor()
+            cur.execute(
+                """
+                SELECT id, url
+                FROM links
+                WHERE (config_hash IS NULL OR config_hash = '')
+                  AND is_invalid = 0
+                  AND is_protocol_unsupported = 0
+                  AND url IS NOT NULL
+                  AND TRIM(url) <> ''
+                  AND id > ?
+                ORDER BY id
+                LIMIT ?
+                """,
+                (last_id, self.batch_size),
+            )
+            rows = cur.fetchall()
+            if not rows:
+                break
 
-            batch: List[tuple] = []
+            with self._stats_lock:
+                self.stats["normalize_batches"] += 1
 
-            for url in self._iter_valid_configs() or []:
+            changes = 0
+
+            for row in rows:
                 self._check_stopped()
 
-                # فقط url را در batch می‌گذاریم
-                batch.append((url,))
+                row_id = int(row["id"])
+                last_id = row_id
+                url = str(row["url"])
 
-                if len(batch) >= self.batch_size:
-                    self._insert_batch(cur, batch)
+                parts = self._split_multi_config_url(url)
+                # اگر فقط یک بخش باشد، نیازی به نرمالایز نیست
+                if len(parts) <= 1:
+                    continue
+
+                with self._stats_lock:
+                    self.stats["normalize_candidates"] += 1
+
+                new_inserted = 0
+
+                for part in parts:
+                    try:
+                        cur.execute(
+                            "INSERT OR IGNORE INTO links (url) VALUES (?)",
+                            (part,),
+                        )
+                        if cur.rowcount == 1:
+                            new_inserted += 1
+                    except sqlite3.Error as e:
+                        print(
+                            f"[importer] ERROR inserting normalized url part for id={row_id}: {e}"
+                        )
+
+                # رکورد اصلی multi-link را حذف می‌کنیم
+                try:
+                    cur.execute("DELETE FROM links WHERE id = ?", (row_id,))
+                except sqlite3.Error as e:
+                    print(f"[importer] ERROR deleting multi-link row id={row_id}: {e}")
+                else:
+                    changes += 1
+                    with self._stats_lock:
+                        self.stats["normalized_rows"] += 1
+                        self.stats["normalized_new_links"] += new_inserted
+
+            if changes > 0:
+                try:
                     conn.commit()
-                    self.stats["batches_committed"] += 1
-                    print(
-                        f"[importer] committed batch of {len(batch)} items "
-                        f"(total inserted: {self.stats['inserted']})"
-                    )
-                    batch.clear()
+                except sqlite3.Error as e:
+                    print(f"[importer] ERROR committing normalization batch: {e}")
 
-            # batch باقی‌مانده
-            if batch:
-                self._insert_batch(cur, batch)
-                conn.commit()
-                self.stats["batches_committed"] += 1
-                print(
-                    f"[importer] committed final batch of {len(batch)} items "
-                    f"(total inserted: {self.stats['inserted']})"
-                )
+        print("[importer] URL normalization pass finished.")
 
-            print(
-                "\n[importer] import finished:"
-                f"\n   total lines:      {self.stats['total_lines']}"
-                f"\n   valid configs:    {self.stats['valid_configs']}"
-                f"\n   inserted (new):   {self.stats['inserted']}"
-                f"\n   skipped invalid:  {self.stats['skipped_invalid']}"
-                f"\n   batches committed:{self.stats['batches_committed']}"
-            )
+    # ---------- نقطهٔ ورود اصلی ----------
+
+    def import_configs(self) -> None:
+        """
+        نقطهٔ اصلی اجرای job ایمپورتر:
+
+          1) ایمپورت از فایل raw_configs.txt به جدول links
+          2) نرمالایز URLها در جدول links (multi-link splitter)
+        """
+        print(f"[importer] starting import job (batch_size={self.batch_size})")
+
+        conn = sqlite3.connect(get_db_path())
+        conn.row_factory = sqlite3.Row
+        conn.execute("PRAGMA journal_mode = WAL;")
+        conn.execute("PRAGMA synchronous = NORMAL;")
+        conn.execute("PRAGMA temp_store = MEMORY;")
+
+        try:
+            # مرحله ۱: ایمپورت از فایل
+            self._import_from_raw_file(conn)
+
+            # مرحله ۲: نرمالایز URLها در DB
+            self._normalize_links(conn)
 
         except ImporterStopped:
-            print(
-                "\n[importer] import stopped by request:"
-                f"\n   total lines:      {self.stats['total_lines']}"
-                f"\n   valid configs:    {self.stats['valid_configs']}"
-                f"\n   inserted (new):   {self.stats['inserted']}"
-                f"\n   skipped invalid:  {self.stats['skipped_invalid']}"
-                f"\n   batches committed:{self.stats['batches_committed']}"
-            )
+            print("[importer] stopped by request.")
         finally:
-            conn.close()
-            print("[importer] connection closed.")
+            try:
+                conn.close()
+                print("[importer] DB connection closed.")
+            except Exception:
+                pass
 
-    def _insert_batch(self, cur, batch: List[tuple]):
-        """
-        اجرای batch insert با INSERT OR IGNORE تا urlهای تکراری خطا ندهند.
-        فقط ستون url را ست می‌کنیم.
-        """
-        cur.executemany(
-            """
-            INSERT OR IGNORE INTO links (
-                url
-            )
-            VALUES (?)
-            """,
-            batch,
+        # گزارش نهایی
+        print(
+            "[importer] job finished:"
+            f"\n total_lines (raw file): {self.stats['total_lines']}"
+            f"\n valid_configs (non-empty lines): {self.stats['valid_configs']}"
+            f"\n inserted (new links): {self.stats['inserted']}"
+            f"\n batches_committed (import): {self.stats['batches_committed']}"
+            f"\n normalize_batches: {self.stats['normalize_batches']}"
+            f"\n normalize_candidates (multi-link urls): {self.stats['normalize_candidates']}"
+            f"\n normalized_rows (original multi-link rows deleted): {self.stats['normalized_rows']}"
+            f"\n normalized_new_links (links inserted from splits): {self.stats['normalized_new_links']}"
         )
-        if cur.rowcount is not None and cur.rowcount > 0:
-            self.stats["inserted"] += cur.rowcount
 
 
 if __name__ == "__main__":
-    print("XrayMgr Raw Config Importer")
     importer = RawConfigImporter(batch_size=1000)
-    try:
-        importer.import_configs()
-    except ImporterStopped:
-        print("Importer stopped by user.")
+    importer.import_configs()

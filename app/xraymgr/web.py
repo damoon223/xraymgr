@@ -1,5 +1,6 @@
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from typing import List, Optional, Dict, Any
 
@@ -9,14 +10,22 @@ import threading
 import time
 import sys
 import contextlib
+from pathlib import Path
+from collections import deque
 
 from .settings import get_db_path
 from .collector import SubscriptionCollector
 from .importer import RawConfigImporter
 from .json_updater import JsonConfigUpdater
 from .hash_updater import ConfigHashUpdater
+from .compress_db import main as compress_db_main
 
 app = FastAPI(title="XrayMgr Web Dashboard")
+
+BASE_DIR = Path(__file__).resolve().parent
+STATIC_DIR = BASE_DIR / "web_static"
+
+app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
 
 # ----------------- DB helpers -----------------
@@ -93,12 +102,18 @@ def run_query(query: str, params: Optional[List[Any]] = None) -> Dict[str, Any]:
 # ----------------- Background jobs state -----------------
 
 
+collector_lock = threading.Lock()
+
+# حداکثر تعداد خطوط لاگ که در حافظه نگه می‌داریم
+MAX_LOG_LINES = 50
+job_log_buffer: "deque[str]" = deque(maxlen=MAX_LOG_LINES)
+
 collector_state = {
     "running": False,
     "last_started_at": None,
     "last_finished_at": None,
     "stats": None,      # dict یا None
-    "log": [],          # list[str] - لاگ مشترک
+    "log": job_log_buffer,  # اشاره به بافر حلقه‌ای
     "instance": None,   # SubscriptionCollector یا None
 }
 
@@ -126,14 +141,20 @@ hash_state = {
     "instance": None,   # ConfigHashUpdater یا None
 }
 
-collector_lock = threading.Lock()
+compress_state = {
+    "running": False,
+    "last_started_at": None,
+    "last_finished_at": None,
+    "stats": None,      # dict یا None
+    "instance": None,   # برای سازگاری؛ استاپ نداریم فعلاً
+}
 
 
 class CollectorLogStream:
     """
-    استریم ساده برای گرفتن خروجی printهای jobها (کالکتور/ایمپورتر/json_updater/hash_updater):
+    استریم ساده برای گرفتن خروجی printهای jobها (کالکتور/ایمپورتر/json_updater/hash_updater/compress):
       - هم‌زمان روی stdout واقعی می‌نویسد
-      - علاوه بر آن، لاگ‌ها را در collector_state["log"] ذخیره می‌کند
+      - علاوه بر آن، لاگ‌ها را در job_log_buffer (و collector_state["log"]) ذخیره می‌کند
     """
 
     def write(self, s: str) -> int:
@@ -144,7 +165,7 @@ class CollectorLogStream:
         with collector_lock:
             for line in lines:
                 if line.strip():
-                    collector_state["log"].append(line)
+                    job_log_buffer.append(line)
         return len(s)
 
     def flush(self) -> None:
@@ -297,6 +318,53 @@ def _run_hash_thread():
             print("[hash_updater] background thread finished.")
 
 
+def _run_compress_thread():
+    """
+    اجرای job بکاپ فشرده‌ی دیتابیس در بک‌گراند.
+    از اسکریپت xraymgr.compress_db استفاده می‌کند و لاگ را در پنل نشان می‌دهد.
+    """
+    log_stream = CollectorLogStream()
+
+    with collector_lock:
+        compress_state["running"] = True
+        compress_state["last_started_at"] = time.time()
+        compress_state["last_finished_at"] = None
+        compress_state["stats"] = None
+        compress_state["instance"] = None
+        collector_state["log"].clear()
+
+    with contextlib.redirect_stdout(log_stream):
+        print("[compress] starting database compression background thread...")
+
+        try:
+            db_path = get_db_path()
+            db_path = os.path.abspath(db_path)
+            db_dir = os.path.dirname(db_path)
+            db_base = os.path.basename(db_path)
+            ts = time.strftime("%Y%m%d-%H%M%S")
+            out_name = f"{db_base}.{ts}.xz"
+            out_path = os.path.join(db_dir, out_name)
+            print(f"[compress] expected output file: {out_path}")
+
+            # اجرای main اسکریپت که خودش فایل خروجی را می‌سازد
+            compress_db_main()
+
+            with collector_lock:
+                compress_state["stats"] = {
+                    "compress_stats": {
+                        "output_file": out_path
+                    }
+                }
+        except Exception as e:
+            print(f"[compress] FATAL ERROR inside job: {e}")
+        finally:
+            with collector_lock:
+                compress_state["running"] = False
+                compress_state["last_finished_at"] = time.time()
+                compress_state["instance"] = None
+            print("[compress] background thread finished.")
+
+
 # ----------------- Pydantic models -----------------
 
 
@@ -310,915 +378,11 @@ class SQLQuery(BaseModel):
 
 @app.get("/", response_class=HTMLResponse)
 async def index():
-    html = r"""
-<!DOCTYPE html>
-<html lang="fa">
-<head>
-    <meta charset="UTF-8">
-    <title>XrayMgr Dashboard</title>
-    <style>
-        body {
-            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-            margin: 0;
-            padding: 0;
-            background: #0f172a;
-            color: #e5e7eb;
-            direction: rtl;
-        }
-        header {
-            background: #111827;
-            padding: 16px 24px;
-            border-bottom: 1px solid #1f2937;
-            display: flex;
-            align-items: baseline;
-            justify-content: space-between;
-            gap: 16px;
-        }
-        header h1 {
-            margin: 0;
-            font-size: 20px;
-            color: #f9fafb;
-        }
-        header span.subtitle {
-            color: #9ca3af;
-            font-size: 13px;
-        }
-        main {
-            padding: 16px 24px 32px 24px;
-        }
-        .card {
-            background: #020617;
-            border-radius: 10px;
-            padding: 14px 16px 16px;
-            border: 1px solid #1f2937;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.45);
-        }
-        .card h2 {
-            margin: 0 0 10px 0;
-            font-size: 16px;
-            color: #e5e7eb;
-        }
-        .card small {
-            color: #6b7280;
-        }
-        .card-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: baseline;
-            gap: 8px;
-            margin-bottom: 8px;
-        }
-        .status-ok {
-            color: #22c55e;
-            font-size: 13px;
-        }
-        .status-bad {
-            color: #ef4444;
-            font-size: 13px;
-        }
-        select, input, textarea, button {
-            font-family: inherit;
-            font-size: 13px;
-        }
-        select, input, textarea {
-            background: #020617;
-            border-radius: 6px;
-            border: 1px solid #374151;
-            color: #e5e7eb;
-            padding: 6px 8px;
-            width: 100%;
-            box-sizing: border-box;
-        }
-        select:focus, input:focus, textarea:focus {
-            outline: 2px solid #2563eb;
-            outline-offset: 1px;
-            border-color: #2563eb;
-        }
-        textarea {
-            resize: vertical;
-            min-height: 90px;
-        }
-        button {
-            border-radius: 6px;
-            border: none;
-            padding: 6px 10px;
-            cursor: pointer;
-            font-weight: 500;
-            background: #2563eb;
-            color: #e5e7eb;
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-        }
-        button.secondary {
-            background: #111827;
-            border: 1px solid #374151;
-        }
-        button.danger {
-            background: #b91c1c;
-        }
-        button:disabled {
-            opacity: 0.5;
-            cursor: default;
-        }
-        table {
-            border-collapse: collapse;
-            width: 100%;
-            font-size: 12px;
-            direction: ltr;
-        }
-        th, td {
-            border-bottom: 1px solid #1f2937;
-            padding: 4px 6px;
-            text-align: left;
-        }
-        th {
-            background: #020617;
-            color: #9ca3af;
-            position: sticky;
-            top: 0;
-            z-index: 1;
-        }
-        tr:nth-child(even) td {
-            background: rgba(15,23,42,0.6);
-        }
-        tr:hover td {
-            background: rgba(30,64,175,0.25);
-        }
-        .table-container {
-            max-height: 420px;
-            overflow: auto;
-            border-radius: 8px;
-            border: 1px solid #111827;
-            background: radial-gradient(circle at top, rgba(37,99,235,0.08), transparent 55%);
-        }
-        code {
-            font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-            font-size: 12px;
-        }
-        pre {
-            font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-            font-size: 12px;
-            background: #020617;
-            border-radius: 8px;
-            border: 1px solid #1f2937;
-            padding: 8px 10px;
-            max-height: 360px;
-            min-height: 220px;
-            overflow: auto;
-            white-space: pre-wrap;
-        }
-        .muted {
-            color: #6b7280;
-            font-size: 12px;
-        }
-        .pill {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            padding: 2px 8px;
-            border-radius: 999px;
-            font-size: 11px;
-            background: rgba(15,118,110,0.1);
-            color: #14b8a6;
-        }
-        .pill span.dot {
-            width: 8px;
-            height: 8px;
-            border-radius: 999px;
-            background: #22c55e;
-        }
-        .pill.red {
-            background: rgba(185,28,28,0.2);
-            color: #f97316;
-        }
-        .pill.red span.dot {
-            background: #f97316;
-        }
-        .pill.gray {
-            background: rgba(75,85,99,0.4);
-            color: #e5e7eb;
-        }
-        footer {
-            margin-top: 16px;
-            font-size: 11px;
-            color: #6b7280;
-        }
-        .btn-row {
-            display: flex;
-            gap: 8px;
-            flex-wrap: wrap;
-            margin-top: 4px;
-            margin-bottom: 8px;
-        }
-        .label-row {
-            display: flex;
-            justify-content: space-between;
-            font-size: 11px;
-            color: #9ca3af;
-            margin-bottom: 4px;
-        }
-        .status-line {
-            font-size: 12px;
-            color: #9ca3af;
-            margin-top: 4px;
-        }
-        hr {
-            border: 0;
-            border-top: 1px solid #111827;
-            margin: 10px 0;
-        }
-
-        /* تب‌ها */
-
-        .tabs {
-            display: flex;
-            gap: 8px;
-            margin-bottom: 16px;
-            border-bottom: 1px solid #1f2937;
-        }
-        .tab-button {
-            border: none;
-            background: transparent;
-            padding: 8px 12px;
-            cursor: pointer;
-            font-size: 13px;
-            border-radius: 8px 8px 0 0;
-            color: #9ca3af;
-        }
-        .tab-button:hover {
-            background: rgba(15,23,42,0.8);
-        }
-        .tab-button.active {
-            background: #020617;
-            color: #e5e7eb;
-            border: 1px solid #1f2937;
-            border-bottom-color: #020617;
-        }
-        .tab-content {
-            display: none;
-        }
-        .tab-content.active {
-            display: block;
-        }
-
-        /* layout برای تب jobها */
-
-        .jobs-grid {
-            display: grid;
-            grid-template-columns: minmax(0, 1.6fr) minmax(0, 2.2fr);
-            gap: 12px;
-        }
-
-        @media (max-width: 900px) {
-            .jobs-grid {
-                grid-template-columns: minmax(0, 1fr);
-            }
-        }
-    </style>
-</head>
-<body>
-<header>
-    <div>
-        <h1>XrayMgr Dashboard</h1>
-        <span class="subtitle">وضعیت Jobها، دیتابیس و لاگ‌ها</span>
-    </div>
-    <div class="pill gray">
-        <span class="dot"></span>
-        <span>SQLite: <code id="db-path">...</code></span>
-    </div>
-</header>
-<main>
-    <div class="tabs">
-        <button class="tab-button active" data-tab="jobs" onclick="switchTab('jobs')">
-            Jobها / پردازش‌ها
-        </button>
-        <button class="tab-button" data-tab="db" onclick="switchTab('db')">
-            دیتابیس / SQL
-        </button>
-    </div>
-
-    <!-- تب Jobها -->
-
-    <div id="tab-jobs" class="tab-content active">
-        <section class="card">
-            <div class="card-header">
-                <h2>Jobهای بک‌گراند</h2>
-                <small>کالکتور ساب‌ها + ایمپورتر raw_configs → links + آپدیتر JSON</small>
-            </div>
-
-            <div class="jobs-grid">
-                <div class="jobs-controls">
-                    <!-- Collector controls -->
-                    <div class="label-row">
-                        <span>وضعیت کالکتور ساب‌ها:</span>
-                        <span id="collector-status" class="muted">...</span>
-                    </div>
-                    <div class="btn-row">
-                        <button id="collector-run-btn" onclick="startCollector()">شروع کالکتور</button>
-                        <button class="danger" id="collector-stop-btn" onclick="stopCollector()" disabled>توقف کالکتور</button>
-                        <button class="secondary" onclick="refreshCollectorStatus()">رفرش وضعیت</button>
-                    </div>
-                    <div id="collector-stats" class="status-line"></div>
-
-                    <hr>
-
-                    <!-- Importer controls -->
-                    <div class="label-row">
-                        <span>وضعیت ایمپورتر raw_configs → links:</span>
-                        <span id="importer-status" class="muted">...</span>
-                    </div>
-                    <div class="btn-row">
-                        <button id="importer-run-btn" onclick="startImporter()">شروع ایمپورتر</button>
-                        <button class="danger" id="importer-stop-btn" onclick="stopImporter()" disabled>توقف ایمپورتر</button>
-                        <button class="secondary" onclick="refreshImporterStatus()">رفرش وضعیت</button>
-                    </div>
-                    <div id="importer-stats" class="status-line"></div>
-
-                    <hr>
-
-                    <!-- JSON updater controls -->
-                    <div class="label-row">
-                        <span>وضعیت آپدیتر JSON (links.config_json):</span>
-                        <span id="json-status" class="muted">...</span>
-                    </div>
-                    <div class="btn-row">
-                        <button id="json-run-btn" onclick="startJson()">شروع JSON updater</button>
-                        <button class="danger" id="json-stop-btn" onclick="stopJson()" disabled>توقف JSON updater</button>
-                        <button class="secondary" onclick="refreshJsonStatus()">رفرش وضعیت</button>
-                    </div>
-                    <div id="json-stats" class="status-line"></div>
-
-                    <hr>
-
-                    <!-- Hash updater controls -->
-                    <div class="label-row">
-                        <span>وضعیت Hash updater (links.config_hash):</span>
-                        <span id="hash-status" class="muted">...</span>
-                    </div>
-                    <div class="btn-row">
-                        <button id="hash-run-btn" onclick="startHash()">شروع Hash updater</button>
-                        <button class="danger" id="hash-stop-btn" onclick="stopHash()" disabled>توقف Hash updater</button>
-                        <button class="secondary" onclick="refreshHashStatus()">رفرش وضعیت</button>
-                    </div>
-                    <div id="hash-stats" class="status-line"></div>
-                </div>
-
-                <div class="jobs-log">
-                    <div class="label-row" style="margin-top: 4px;">
-                        <span>لاگ jobهای بک‌گراند:</span>
-                        <span class="muted">خروجی آخرین اجرا (با auto-refresh تا وقتی jobها در حال اجرا هستند)</span>
-                    </div>
-                    <pre id="collector-log">(هنوز لاگی ثبت نشده است)</pre>
-                </div>
-            </div>
-        </section>
-    </div>
-
-    <!-- تب دیتابیس / SQL -->
-
-    <div id="tab-db" class="tab-content">
-        <section class="card">
-            <div class="card-header">
-                <h2>دیتابیس و کنسول SQL</h2>
-                <small>فقط کوئری بنویس، بزن اجرا؛ بقیه‌اش با ما.</small>
-            </div>
-
-            <div>
-                <div class="label-row">
-                    <span>کوئری SQL</span>
-                    <span class="muted">احتیاط: اینجا هر دستور SQLite (SELECT / UPDATE / DELETE / DDL) اجرا می‌شود.</span>
-                </div>
-                <textarea id="sql-input" placeholder="هر دستور معتبر SQLite را می‌توانی اینجا اجرا کنی"></textarea>
-                <div class="btn-row">
-                    <button onclick="runQuery()">اجرای کوئری</button>
-                    <select id="sql-presets" onchange="applyPresetQuery()">
-                        <option value="">کوئری آماده…</option>
-                        <option value="SELECT * FROM links LIMIT 10;">۱۰ سطر اول links</option>
-                    </select>
-                </div>
-                <div id="sql-status" class="status-line"></div>
-            </div>
-
-            <div class="label-row" style="margin-top: 10px;">
-                <span>نتیجهٔ کوئری:</span>
-                <span class="muted">برای خوانایی، فقط بخشی از نتیجه نمایش داده می‌شود.</span>
-            </div>
-            <div id="sql-result" class="table-container" style="margin-top: 8px;">
-                <div class="muted">نتیجه‌ای برای نمایش نیست.</div>
-            </div>
-        </section>
-    </div>
-
-    <footer>
-        مسیر دیتابیس: <code id="footer-db-path">...</code>
-    </footer>
-</main>
-
-<script>
-    const dbPathEl = document.getElementById("db-path");
-    const footerDbPathEl = document.getElementById("footer-db-path");
-
-    const sqlInput = document.getElementById("sql-input");
-    const sqlStatus = document.getElementById("sql-status");
-    const sqlResult = document.getElementById("sql-result");
-    const sqlPresets = document.getElementById("sql-presets");
-
-    const collectorStatusEl = document.getElementById("collector-status");
-    const collectorStatsEl = document.getElementById("collector-stats");
-    const collectorLogEl = document.getElementById("collector-log");
-    const collectorRunBtn = document.getElementById("collector-run-btn");
-    const collectorStopBtn = document.getElementById("collector-stop-btn");
-
-    const importerStatusEl = document.getElementById("importer-status");
-    const importerStatsEl = document.getElementById("importer-stats");
-    const importerRunBtn = document.getElementById("importer-run-btn");
-    const importerStopBtn = document.getElementById("importer-stop-btn");
-
-    const jsonStatusEl = document.getElementById("json-status");
-    const jsonStatsEl = document.getElementById("json-stats");
-    const jsonRunBtn = document.getElementById("json-run-btn");
-    const jsonStopBtn = document.getElementById("json-stop-btn");
-
-    const hashStatusEl = document.getElementById("hash-status");
-    const hashStatsEl = document.getElementById("hash-stats");
-    const hashRunBtn = document.getElementById("hash-run-btn");
-    const hashStopBtn = document.getElementById("hash-stop-btn");
-
-    const tabButtons = document.querySelectorAll(".tab-button");
-    const tabContents = document.querySelectorAll(".tab-content");
-
-    let collectorLogOffset = 0;
-    let collectorRunning = false;
-    let collectorPolling = false;
-    let importerRunning = false;
-    let jsonRunning = false;
-    let hashRunning = false;
-
-    function switchTab(target) {
-        tabButtons.forEach((btn) => {
-            btn.classList.toggle("active", btn.dataset.tab === target);
-        });
-        tabContents.forEach((tab) => {
-            tab.classList.toggle("active", tab.id === "tab-" + target);
-        });
-    }
-
-    async function refreshHealth() {
-        try {
-            const res = await fetch("/health");
-            if (!res.ok) throw new Error("HTTP " + res.status);
-            const data = await res.json();
-            if (dbPathEl) dbPathEl.textContent = data.db_path || "unknown";
-            if (footerDbPathEl) footerDbPathEl.textContent = data.db_path || "unknown";
-        } catch (err) {
-            // اگر چیزی خراب باشد، همین که db-path خالی نیست برای ما کافی است
-        }
-    }
-
-    function renderTable(data, container) {
-        const cols = data.columns || [];
-        const rows = data.rows || [];
-        if (cols.length === 0) {
-            container.innerHTML = '<div class="muted">هیچ ستونی برای نمایش نیست.</div>';
-            return;
-        }
-        let html = '<table><thead><tr>';
-        cols.forEach(c => {
-            html += `<th>${escapeHtml(c)}</th>`;
-        });
-        html += '</tr></thead><tbody>';
-        if (rows.length === 0) {
-            html += '<tr><td colspan="' + cols.length + '" class="muted">داده‌ای وجود ندارد.</td></tr>';
-        } else {
-            rows.forEach(row => {
-                html += '<tr>';
-                cols.forEach(c => {
-                    let v = row[c];
-                    if (v === null || v === undefined) v = "";
-                    html += `<td>${escapeHtml(String(v))}</td>`;
-                });
-                html += '</tr>';
-            });
-        }
-        html += '</tbody></table>';
-        container.innerHTML = html;
-    }
-
-    function escapeHtml(str) {
-        return str
-            .replace(/&/g, "&amp;")
-            .replace(/</g, "&lt;")
-            .replace(/>/g, "&gt;");
-    }
-
-    async function runQuery() {
-        if (!sqlInput || !sqlResult || !sqlStatus) return;
-        const q = sqlInput.value;
-        sqlStatus.textContent = "";
-        sqlResult.innerHTML = '<div class="muted">...</div>';
-        if (!q.trim()) {
-            sqlStatus.textContent = "کوئری خالی است.";
-            return;
-        }
-        try {
-            const res = await fetch("/db/query", {
-                method: "POST",
-                headers: {"Content-Type": "application/json"},
-                body: JSON.stringify({query: q, params: []})
-            });
-            if (!res.ok) {
-                const text = await res.text();
-                throw new Error(text || ("HTTP " + res.status));
-            }
-            const data = await res.json();
-            if (data.columns && data.columns.length > 0) {
-                renderTable(data, sqlResult);
-                sqlStatus.textContent = `نتیجه: ${data.rows.length} ردیف`;
-            } else {
-                sqlResult.innerHTML = '<div class="muted">کوئری بدون نتیجهٔ جدولی اجرا شد.</div>';
-                sqlStatus.textContent = `rowcount: ${data.rowcount}`;
-            }
-        } catch (err) {
-            console.error(err);
-            sqlStatus.textContent = "خطا در اجرای کوئری: " + err;
-            sqlResult.innerHTML = '<div class="muted">خطا در اجرای کوئری.</div>';
-        }
-    }
-
-    function applyPresetQuery() {
-        if (!sqlPresets || !sqlInput) return;
-        const q = sqlPresets.value;
-        if (!q) return;
-        sqlInput.value = q;
-        runQuery();
-    }
-
-    // ---- Collector controls ----
-
-    async function refreshCollectorStatus() {
-        try {
-            const res = await fetch("/collector/status");
-            if (!res.ok) throw new Error("HTTP " + res.status);
-            const data = await res.json();
-
-            collectorRunning = !!data.running;
-            const runningLabel = collectorRunning ? "در حال اجرا" : "متوقف";
-            const pillClass = collectorRunning ? "pill" : "pill gray";
-            collectorStatusEl.innerHTML =
-                `<span class="${pillClass}"><span class="dot"></span><span>${runningLabel}</span></span>`;
-
-            collectorRunBtn.disabled = !!collectorRunning;
-            collectorStopBtn.disabled = !collectorRunning;
-
-            if (data.stats && data.stats.collector_stats) {
-                const s = data.stats.collector_stats;
-                collectorStatsEl.textContent =
-                    `سورس‌ها: ${s.total_sources || 0} | موفق: ${s.successful_sources || 0} | خراب: ${s.failed_sources || 0} | کانفیگ جمع‌شده: ${s.total_configs || 0}`;
-            } else {
-                collectorStatsEl.textContent = "";
-            }
-
-            if ((collectorRunning || importerRunning || jsonRunning || hashRunning) && !collectorPolling) {
-                collectorPolling = true;
-                pollCollectorLog();
-            }
-        } catch (err) {
-            console.error(err);
-            collectorStatusEl.innerHTML =
-                '<span class="pill red"><span class="dot"></span><span>خطا در وضعیت کالکتور</span></span>';
-        }
-    }
-
-    async function startCollector() {
-        try {
-            collectorRunBtn.disabled = true;
-            collectorStopBtn.disabled = false;
-            collectorLogOffset = 0;
-            collectorLogEl.textContent = "";
-            const res = await fetch("/collector/run", {method: "POST"});
-            if (!res.ok) {
-                const text = await res.text();
-                throw new Error(text || ("HTTP " + res.status));
-            }
-            collectorStatusEl.innerHTML =
-                '<span class="pill"><span class="dot"></span><span>در حال اجرا...</span></span>';
-            collectorRunning = true;
-            if (!collectorPolling) {
-                collectorPolling = true;
-                pollCollectorLog();
-            }
-        } catch (err) {
-            console.error(err);
-            collectorRunBtn.disabled = false;
-            collectorStopBtn.disabled = true;
-            collectorStatusEl.innerHTML =
-                '<span class="pill red"><span class="dot"></span><span>خطا در شروع کالکتور</span></span>';
-        }
-    }
-
-    async function stopCollector() {
-        try {
-            collectorStopBtn.disabled = true;
-            const res = await fetch("/collector/stop", {method: "POST"});
-            if (!res.ok) {
-                const text = await res.text();
-                throw new Error(text || ("HTTP " + res.status));
-            }
-            collectorStatusEl.innerHTML =
-                '<span class="pill red"><span class="dot"></span><span>در حال توقف...</span></span>';
-        } catch (err) {
-            console.error(err);
-            collectorStatusEl.innerHTML =
-                '<span class="pill red"><span class="dot"></span><span>خطا در توقف کالکتور</span></span>';
-        }
-    }
-
-    // ---- Importer controls ----
-
-    async function refreshImporterStatus() {
-        try {
-            const res = await fetch("/importer/status");
-            if (!res.ok) throw new Error("HTTP " + res.status);
-            const data = await res.json();
-
-            importerRunning = !!data.running;
-            const runningLabel = importerRunning ? "در حال اجرا" : "متوقف";
-            const pillClass = importerRunning ? "pill" : "pill gray";
-            importerStatusEl.innerHTML =
-                `<span class="${pillClass}"><span class="dot"></span><span>${runningLabel}</span></span>`;
-
-            importerRunBtn.disabled = !!importerRunning;
-            importerStopBtn.disabled = !importerRunning;
-
-            if (data.stats && data.stats.importer_stats) {
-                const s = data.stats.importer_stats;
-                importerStatsEl.textContent =
-                    `خطوط: ${s.total_lines || 0} | کانفیگ معتبر: ${s.valid_configs || 0} | جدید درج‌شده: ${s.inserted || 0} | batchها: ${s.batches_committed || 0}`;
-            } else {
-                importerStatsEl.textContent = "";
-            }
-
-            if ((collectorRunning || importerRunning || jsonRunning || hashRunning) && !collectorPolling) {
-                collectorPolling = true;
-                pollCollectorLog();
-            }
-        } catch (err) {
-            console.error(err);
-            importerStatusEl.innerHTML =
-                '<span class="pill red"><span class="dot"></span><span>خطا در وضعیت ایمپورتر</span></span>';
-        }
-    }
-
-    async function startImporter() {
-        try {
-            importerRunBtn.disabled = true;
-            importerStopBtn.disabled = false;
-            collectorLogOffset = 0;
-            collectorLogEl.textContent = "";
-            const res = await fetch("/importer/run", {method: "POST"});
-            if (!res.ok) {
-                const text = await res.text();
-                throw new Error(text || ("HTTP " + res.status));
-            }
-            importerStatusEl.innerHTML =
-                '<span class="pill"><span class="dot"></span><span>در حال اجرا...</span></span>';
-            importerRunning = true;
-            if (!collectorPolling) {
-                collectorPolling = true;
-                pollCollectorLog();
-            }
-        } catch (err) {
-            console.error(err);
-            importerRunBtn.disabled = false;
-            importerStopBtn.disabled = true;
-            importerStatusEl.innerHTML =
-                '<span class="pill red"><span class="dot"></span><span>خطا در شروع ایمپورتر</span></span>';
-        }
-    }
-
-    async function stopImporter() {
-        try {
-            importerStopBtn.disabled = true;
-            const res = await fetch("/importer/stop", {method: "POST"});
-            if (!res.ok) {
-                const text = await res.text();
-                throw new Error(text || ("HTTP " + res.status));
-            }
-            importerStatusEl.innerHTML =
-                '<span class="pill red"><span class="dot"></span><span>در حال توقف...</span></span>';
-        } catch (err) {
-            console.error(err);
-            importerStatusEl.innerHTML =
-                '<span class="pill red"><span class="dot"></span><span>خطا در توقف ایمپورتر</span></span>';
-        }
-    }
-
-    // ---- JSON updater controls ----
-
-    async function refreshJsonStatus() {
-        try {
-            const res = await fetch("/json/status");
-            if (!res.ok) throw new Error("HTTP " + res.status);
-            const data = await res.json();
-
-            jsonRunning = !!data.running;
-            const runningLabel = jsonRunning ? "در حال اجرا" : "متوقف";
-            const pillClass = jsonRunning ? "pill" : "pill gray";
-            jsonStatusEl.innerHTML =
-                `<span class="${pillClass}"><span class="dot"></span><span>${runningLabel}</span></span>`;
-
-            jsonRunBtn.disabled = !!jsonRunning;
-            jsonStopBtn.disabled = !jsonRunning;
-
-            if (data.stats && data.stats.json_stats) {
-                const s = data.stats.json_stats;
-                jsonStatsEl.textContent =
-                    `کاندید: ${s.total_candidates || 0} | batchها: ${s.batches || 0} | URLها: ${s.urls_seen || 0} | موفق: ${s.urls_converted || 0} | خراب: ${s.urls_failed || 0} | ردیف آپدیت‌شده: ${s.rows_updated || 0}`;
-            } else {
-                jsonStatsEl.textContent = "";
-            }
-
-            if ((collectorRunning || importerRunning || jsonRunning || hashRunning) && !collectorPolling) {
-                collectorPolling = true;
-                pollCollectorLog();
-            }
-        } catch (err) {
-            console.error(err);
-            jsonStatusEl.innerHTML =
-                '<span class="pill red"><span class="dot"></span><span>خطا در وضعیت JSON updater</span></span>';
-        }
-    }
-
-    async function startJson() {
-        try {
-            jsonRunBtn.disabled = true;
-            jsonStopBtn.disabled = false;
-            collectorLogOffset = 0;
-            collectorLogEl.textContent = "";
-            const res = await fetch("/json/run", {method: "POST"});
-            if (!res.ok) {
-                const text = await res.text();
-                throw new Error(text || ("HTTP " + res.status));
-            }
-            jsonStatusEl.innerHTML =
-                '<span class="pill"><span class="dot"></span><span>در حال اجرا...</span></span>';
-            jsonRunning = true;
-            if (!collectorPolling) {
-                collectorPolling = true;
-                pollCollectorLog();
-            }
-        } catch (err) {
-            console.error(err);
-            jsonRunBtn.disabled = false;
-            jsonStopBtn.disabled = true;
-            jsonStatusEl.innerHTML =
-                '<span class="pill red"><span class="dot"></span><span>خطا در شروع JSON updater</span></span>';
-        }
-    }
-
-    async function stopJson() {
-        try {
-            jsonStopBtn.disabled = true;
-            const res = await fetch("/json/stop", {method: "POST"});
-            if (!res.ok) {
-                const text = await res.text();
-                throw new Error(text || ("HTTP " + res.status));
-            }
-            jsonStatusEl.innerHTML =
-                '<span class="pill red"><span class="dot"></span><span>در حال توقف...</span></span>';
-        } catch (err) {
-            console.error(err);
-            jsonStatusEl.innerHTML =
-                '<span class="pill red"><span class="dot"></span><span>خطا در توقف JSON updater</span></span>';
-        }
-    }
-
-    // ---- Hash updater controls ----
-
-    async function refreshHashStatus() {
-        try {
-            const res = await fetch("/hash/status");
-            if (!res.ok) throw new Error("HTTP " + res.status);
-            const data = await res.json();
-
-            hashRunning = !!data.running;
-            const runningLabel = hashRunning ? "در حال اجرا" : "متوقف";
-            const pillClass = hashRunning ? "pill" : "pill gray";
-            hashStatusEl.innerHTML =
-                `<span class="${pillClass}"><span class="dot"></span><span>${runningLabel}</span></span>`;
-
-            hashRunBtn.disabled = !!hashRunning;
-            hashStopBtn.disabled = !hashRunning;
-
-            if (data.stats && data.stats.hash_stats) {
-                const s = data.stats.hash_stats;
-                hashStatsEl.textContent =
-                    `کاندید: ${s.total_candidates || 0} | batchها: ${s.batches || 0} | پردازش‌شده: ${s.rows_processed || 0} | هش‌شده: ${s.rows_hashed || 0} | ردشده (non-vmess): ${s.rows_skipped_non_vmess || 0} | JSON خراب: ${s.json_decode_errors || 0} | خطای هویت: ${s.identity_errors || 0} | invalid شده: ${s.marked_invalid || 0}`;
-            } else {
-                hashStatsEl.textContent = "";
-            }
-
-            if ((collectorRunning || importerRunning || jsonRunning || hashRunning) && !collectorPolling) {
-                collectorPolling = true;
-                pollCollectorLog();
-            }
-        } catch (err) {
-            console.error(err);
-            hashStatusEl.innerHTML =
-                '<span class="pill red"><span class="dot"></span><span>خطا در وضعیت Hash updater</span></span>';
-        }
-    }
-
-    async function startHash() {
-        try {
-            hashRunBtn.disabled = true;
-            hashStopBtn.disabled = false;
-            collectorLogOffset = 0;
-            collectorLogEl.textContent = "";
-            const res = await fetch("/hash/run", {method: "POST"});
-            if (!res.ok) {
-                const text = await res.text();
-                throw new Error(text || ("HTTP " + res.status));
-            }
-            hashStatusEl.innerHTML =
-                '<span class="pill"><span class="dot"></span><span>در حال اجرا...</span></span>';
-            hashRunning = true;
-            if (!collectorPolling) {
-                collectorPolling = true;
-                pollCollectorLog();
-            }
-        } catch (err) {
-            console.error(err);
-            hashRunBtn.disabled = false;
-            hashStopBtn.disabled = true;
-            hashStatusEl.innerHTML =
-                '<span class="pill red"><span class="dot"></span><span>خطا در شروع Hash updater</span></span>';
-        }
-    }
-
-    async function stopHash() {
-        try {
-            hashStopBtn.disabled = true;
-            const res = await fetch("/hash/stop", {method: "POST"});
-            if (!res.ok) {
-                const text = await res.text();
-                throw new Error(text || ("HTTP " + res.status));
-            }
-            hashStatusEl.innerHTML =
-                '<span class="pill red"><span class="dot"></span><span>در حال توقف...</span></span>';
-        } catch (err) {
-            console.error(err);
-            hashStatusEl.innerHTML =
-                '<span class="pill red"><span class="dot"></span><span>خطا در توقف Hash updater</span></span>';
-        }
-    }
-
-    // ---- Shared log polling ----
-
-    async function pollCollectorLog() {
-        try {
-            const res = await fetch("/collector/log?offset=" + collectorLogOffset);
-            if (res.ok) {
-                const data = await res.json();
-                const lines = data.lines || [];
-                if (lines.length > 0) {
-                    const textToAdd = lines.join("\n");
-                    if (collectorLogEl.textContent === "(هنوز لاگی ثبت نشده است)" || collectorLogOffset === 0) {
-                        collectorLogEl.textContent = textToAdd;
-                    } else {
-                        collectorLogEl.textContent += (collectorLogEl.textContent ? "\n" : "") + textToAdd;
-                    }
-                    collectorLogEl.scrollTop = collectorLogEl.scrollHeight;
-                    collectorLogOffset = data.total;
-                }
-            }
-        } catch (err) {
-            console.error("pollCollectorLog error", err);
-        } finally {
-            if (collectorRunning || importerRunning || jsonRunning || hashRunning) {
-                setTimeout(pollCollectorLog, 2000);
-            } else {
-                collectorPolling = false;
-            }
-        }
-    }
-
-    window.addEventListener("load", () => {
-        refreshHealth();
-        refreshCollectorStatus();
-        refreshImporterStatus();
-        refreshJsonStatus();
-        refreshHashStatus();
-        setInterval(refreshCollectorStatus, 5000);
-        setInterval(refreshImporterStatus, 5000);
-        setInterval(refreshJsonStatus, 5000);
-        setInterval(refreshHashStatus, 5000);
-    });
-</script>
-</body>
-</html>
-    """
+    index_path = STATIC_DIR / "index.html"
+    try:
+        html = index_path.read_text(encoding="utf-8")
+    except FileNotFoundError:
+        return HTMLResponse(content="index.html not found", status_code=500)
     return HTMLResponse(content=html)
 
 
@@ -1292,18 +456,24 @@ async def collector_status():
             "last_started_at": collector_state["last_started_at"],
             "last_finished_at": collector_state["last_finished_at"],
             "stats": collector_state["stats"],
-            "log_length": len(collector_state["log"]),
+            "log_length": len(job_log_buffer),
         }
 
 
 @app.get("/collector/log")
 async def collector_log(offset: int = Query(0, ge=0)):
+    """
+    برای سازگاری با نسخه‌های قدیمی UI:
+    - از job_log_buffer می‌خوانیم (حداکثر ۵۰ خط)
+    - offset همچنان پشتیبانی می‌شود، هرچند UI جدید دیگر از آن استفاده نمی‌کند.
+    """
     with collector_lock:
-        total = len(collector_state["log"])
+        lines = list(job_log_buffer)
+        total = len(lines)
         if offset < 0 or offset > total:
             offset = 0
-        lines = collector_state["log"][offset:]
-    return {"offset": offset, "total": total, "lines": lines}
+        sliced = lines[offset:]
+    return {"offset": offset, "total": total, "lines": sliced}
 
 
 # ---- Importer endpoints ----
@@ -1412,6 +582,87 @@ async def hash_status():
             "last_finished_at": hash_state["last_finished_at"],
             "stats": hash_state["stats"],
         }
+
+
+# ---- Compress (DB backup) endpoints ----
+
+
+@app.post("/compress/run")
+async def run_compress():
+    with collector_lock:
+        if compress_state["running"]:
+            raise HTTPException(status_code=409, detail="Compress job is already running")
+        t = threading.Thread(target=_run_compress_thread, daemon=True)
+        t.start()
+    return {"status": "started"}
+
+
+@app.get("/compress/status")
+async def compress_status():
+    with collector_lock:
+        return {
+            "running": compress_state["running"],
+            "last_started_at": compress_state["last_started_at"],
+            "last_finished_at": compress_state["last_finished_at"],
+            "stats": compress_state["stats"],
+        }
+
+
+# ---- Jobs summary endpoint (برای UI جدید) ----
+
+
+@app.get("/jobs/summary")
+async def jobs_summary():
+    """
+    یک شات کلی برای پنل:
+      - مسیر دیتابیس
+      - وضعیت همهٔ jobها
+      - آخرین ۵۰ خط لاگ مشترک
+    """
+    db_path = get_db_path()
+    with collector_lock:
+        log_lines = list(job_log_buffer)
+        jobs = {
+            "collector": {
+                "running": collector_state["running"],
+                "last_started_at": collector_state["last_started_at"],
+                "last_finished_at": collector_state["last_finished_at"],
+                "stats": collector_state["stats"],
+            },
+            "importer": {
+                "running": importer_state["running"],
+                "last_started_at": importer_state["last_started_at"],
+                "last_finished_at": importer_state["last_finished_at"],
+                "stats": importer_state["stats"],
+            },
+            "json": {
+                "running": json_state["running"],
+                "last_started_at": json_state["last_started_at"],
+                "last_finished_at": json_state["last_finished_at"],
+                "stats": json_state["stats"],
+            },
+            "hash": {
+                "running": hash_state["running"],
+                "last_started_at": hash_state["last_started_at"],
+                "last_finished_at": hash_state["last_finished_at"],
+                "stats": hash_state["stats"],
+            },
+            "compress": {
+                "running": compress_state["running"],
+                "last_started_at": compress_state["last_started_at"],
+                "last_finished_at": compress_state["last_finished_at"],
+                "stats": compress_state["stats"],
+            },
+        }
+
+    return {
+        "db_path": db_path,
+        "jobs": jobs,
+        "log": {
+            "lines": log_lines,
+            "total": len(log_lines),
+        },
+    }
 
 
 def get_app():
