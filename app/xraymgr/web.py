@@ -14,6 +14,7 @@ from .settings import get_db_path
 from .collector import SubscriptionCollector
 from .importer import RawConfigImporter
 from .json_updater import JsonConfigUpdater
+from .hash_updater import ConfigHashUpdater
 
 app = FastAPI(title="XrayMgr Web Dashboard")
 
@@ -117,12 +118,20 @@ json_state = {
     "instance": None,   # JsonConfigUpdater یا None
 }
 
+hash_state = {
+    "running": False,
+    "last_started_at": None,
+    "last_finished_at": None,
+    "stats": None,      # dict یا None
+    "instance": None,   # ConfigHashUpdater یا None
+}
+
 collector_lock = threading.Lock()
 
 
 class CollectorLogStream:
     """
-    استریم ساده برای گرفتن خروجی printهای jobها (کالکتور/ایمپورتر/json_updater):
+    استریم ساده برای گرفتن خروجی printهای jobها (کالکتور/ایمپورتر/json_updater/hash_updater):
       - هم‌زمان روی stdout واقعی می‌نویسد
       - علاوه بر آن، لاگ‌ها را در collector_state["log"] ذخیره می‌کند
     """
@@ -242,6 +251,50 @@ def _run_json_thread():
                 json_state["last_finished_at"] = time.time()
                 json_state["instance"] = None
             print("[json_updater] background thread finished.")
+
+
+def _run_hash_thread():
+    """
+    اجرای job آپدیتر hash (config_hash) در بک‌گراند.
+    """
+    log_stream = CollectorLogStream()
+
+    with collector_lock:
+        hash_state["running"] = True
+        hash_state["last_started_at"] = time.time()
+        hash_state["last_finished_at"] = None
+        hash_state["stats"] = None
+        hash_state["instance"] = None
+        collector_state["log"].clear()
+
+    with contextlib.redirect_stdout(log_stream):
+        print("[hash_updater] starting hash updater background thread...")
+
+        try:
+            updater = ConfigHashUpdater(batch_size=1000)
+            print("[hash_updater] ConfigHashUpdater initialized.")
+            with collector_lock:
+                hash_state["instance"] = updater
+        except Exception as e:
+            print(f"[hash_updater] FATAL ERROR during init: {e}")
+            with collector_lock:
+                hash_state["running"] = False
+                hash_state["last_finished_at"] = time.time()
+                hash_state["instance"] = None
+            return
+
+        try:
+            updater.update_hashes()
+            with collector_lock:
+                hash_state["stats"] = {"hash_stats": updater.stats}
+        except Exception as e:
+            print(f"[hash_updater] FATAL ERROR inside job: {e}")
+        finally:
+            with collector_lock:
+                hash_state["running"] = False
+                hash_state["last_finished_at"] = time.time()
+                hash_state["instance"] = None
+            print("[hash_updater] background thread finished.")
 
 
 # ----------------- Pydantic models -----------------
@@ -595,6 +648,20 @@ async def index():
                         <button class="secondary" onclick="refreshJsonStatus()">رفرش وضعیت</button>
                     </div>
                     <div id="json-stats" class="status-line"></div>
+
+                    <hr>
+
+                    <!-- Hash updater controls -->
+                    <div class="label-row">
+                        <span>وضعیت Hash updater (links.config_hash):</span>
+                        <span id="hash-status" class="muted">...</span>
+                    </div>
+                    <div class="btn-row">
+                        <button id="hash-run-btn" onclick="startHash()">شروع Hash updater</button>
+                        <button class="danger" id="hash-stop-btn" onclick="stopHash()" disabled>توقف Hash updater</button>
+                        <button class="secondary" onclick="refreshHashStatus()">رفرش وضعیت</button>
+                    </div>
+                    <div id="hash-stats" class="status-line"></div>
                 </div>
 
                 <div class="jobs-log">
@@ -673,6 +740,11 @@ async def index():
     const jsonRunBtn = document.getElementById("json-run-btn");
     const jsonStopBtn = document.getElementById("json-stop-btn");
 
+    const hashStatusEl = document.getElementById("hash-status");
+    const hashStatsEl = document.getElementById("hash-stats");
+    const hashRunBtn = document.getElementById("hash-run-btn");
+    const hashStopBtn = document.getElementById("hash-stop-btn");
+
     const tabButtons = document.querySelectorAll(".tab-button");
     const tabContents = document.querySelectorAll(".tab-content");
 
@@ -681,6 +753,7 @@ async def index():
     let collectorPolling = false;
     let importerRunning = false;
     let jsonRunning = false;
+    let hashRunning = false;
 
     function switchTab(target) {
         tabButtons.forEach((btn) => {
@@ -806,7 +879,7 @@ async def index():
                 collectorStatsEl.textContent = "";
             }
 
-            if ((collectorRunning || importerRunning || jsonRunning) && !collectorPolling) {
+            if ((collectorRunning || importerRunning || jsonRunning || hashRunning) && !collectorPolling) {
                 collectorPolling = true;
                 pollCollectorLog();
             }
@@ -886,7 +959,7 @@ async def index():
                 importerStatsEl.textContent = "";
             }
 
-            if ((collectorRunning || importerRunning || jsonRunning) && !collectorPolling) {
+            if ((collectorRunning || importerRunning || jsonRunning || hashRunning) && !collectorPolling) {
                 collectorPolling = true;
                 pollCollectorLog();
             }
@@ -966,7 +1039,7 @@ async def index():
                 jsonStatsEl.textContent = "";
             }
 
-            if ((collectorRunning || importerRunning || jsonRunning) && !collectorPolling) {
+            if ((collectorRunning || importerRunning || jsonRunning || hashRunning) && !collectorPolling) {
                 collectorPolling = true;
                 pollCollectorLog();
             }
@@ -1021,6 +1094,86 @@ async def index():
         }
     }
 
+    // ---- Hash updater controls ----
+
+    async function refreshHashStatus() {
+        try {
+            const res = await fetch("/hash/status");
+            if (!res.ok) throw new Error("HTTP " + res.status);
+            const data = await res.json();
+
+            hashRunning = !!data.running;
+            const runningLabel = hashRunning ? "در حال اجرا" : "متوقف";
+            const pillClass = hashRunning ? "pill" : "pill gray";
+            hashStatusEl.innerHTML =
+                `<span class="${pillClass}"><span class="dot"></span><span>${runningLabel}</span></span>`;
+
+            hashRunBtn.disabled = !!hashRunning;
+            hashStopBtn.disabled = !hashRunning;
+
+            if (data.stats && data.stats.hash_stats) {
+                const s = data.stats.hash_stats;
+                hashStatsEl.textContent =
+                    `کاندید: ${s.total_candidates || 0} | batchها: ${s.batches || 0} | پردازش‌شده: ${s.rows_processed || 0} | هش‌شده: ${s.rows_hashed || 0} | ردشده (non-vmess): ${s.rows_skipped_non_vmess || 0} | JSON خراب: ${s.json_decode_errors || 0} | خطای هویت: ${s.identity_errors || 0} | invalid شده: ${s.marked_invalid || 0}`;
+            } else {
+                hashStatsEl.textContent = "";
+            }
+
+            if ((collectorRunning || importerRunning || jsonRunning || hashRunning) && !collectorPolling) {
+                collectorPolling = true;
+                pollCollectorLog();
+            }
+        } catch (err) {
+            console.error(err);
+            hashStatusEl.innerHTML =
+                '<span class="pill red"><span class="dot"></span><span>خطا در وضعیت Hash updater</span></span>';
+        }
+    }
+
+    async function startHash() {
+        try {
+            hashRunBtn.disabled = true;
+            hashStopBtn.disabled = false;
+            collectorLogOffset = 0;
+            collectorLogEl.textContent = "";
+            const res = await fetch("/hash/run", {method: "POST"});
+            if (!res.ok) {
+                const text = await res.text();
+                throw new Error(text || ("HTTP " + res.status));
+            }
+            hashStatusEl.innerHTML =
+                '<span class="pill"><span class="dot"></span><span>در حال اجرا...</span></span>';
+            hashRunning = true;
+            if (!collectorPolling) {
+                collectorPolling = true;
+                pollCollectorLog();
+            }
+        } catch (err) {
+            console.error(err);
+            hashRunBtn.disabled = false;
+            hashStopBtn.disabled = true;
+            hashStatusEl.innerHTML =
+                '<span class="pill red"><span class="dot"></span><span>خطا در شروع Hash updater</span></span>';
+        }
+    }
+
+    async function stopHash() {
+        try {
+            hashStopBtn.disabled = true;
+            const res = await fetch("/hash/stop", {method: "POST"});
+            if (!res.ok) {
+                const text = await res.text();
+                throw new Error(text || ("HTTP " + res.status));
+            }
+            hashStatusEl.innerHTML =
+                '<span class="pill red"><span class="dot"></span><span>در حال توقف...</span></span>';
+        } catch (err) {
+            console.error(err);
+            hashStatusEl.innerHTML =
+                '<span class="pill red"><span class="dot"></span><span>خطا در توقف Hash updater</span></span>';
+        }
+    }
+
     // ---- Shared log polling ----
 
     async function pollCollectorLog() {
@@ -1043,7 +1196,7 @@ async def index():
         } catch (err) {
             console.error("pollCollectorLog error", err);
         } finally {
-            if (collectorRunning || importerRunning || jsonRunning) {
+            if (collectorRunning || importerRunning || jsonRunning || hashRunning) {
                 setTimeout(pollCollectorLog, 2000);
             } else {
                 collectorPolling = false;
@@ -1056,9 +1209,11 @@ async def index():
         refreshCollectorStatus();
         refreshImporterStatus();
         refreshJsonStatus();
+        refreshHashStatus();
         setInterval(refreshCollectorStatus, 5000);
         setInterval(refreshImporterStatus, 5000);
         setInterval(refreshJsonStatus, 5000);
+        setInterval(refreshHashStatus, 5000);
     });
 </script>
 </body>
@@ -1220,6 +1375,42 @@ async def json_status():
             "last_started_at": json_state["last_started_at"],
             "last_finished_at": json_state["last_finished_at"],
             "stats": json_state["stats"],
+        }
+
+
+# ---- Hash updater endpoints ----
+
+
+@app.post("/hash/run")
+async def run_hash():
+    with collector_lock:
+        if hash_state["running"]:
+            raise HTTPException(status_code=409, detail="Hash updater is already running")
+        t = threading.Thread(target=_run_hash_thread, daemon=True)
+        t.start()
+    return {"status": "started"}
+
+
+@app.post("/hash/stop")
+async def stop_hash():
+    with collector_lock:
+        if not hash_state["running"]:
+            raise HTTPException(status_code=409, detail="Hash updater is not running")
+        inst = hash_state.get("instance")
+    if inst is None:
+        raise HTTPException(status_code=500, detail="Hash updater instance not available")
+    inst.request_stop()
+    return {"status": "stopping"}
+
+
+@app.get("/hash/status")
+async def hash_status():
+    with collector_lock:
+        return {
+            "running": hash_state["running"],
+            "last_started_at": hash_state["last_started_at"],
+            "last_finished_at": hash_state["last_finished_at"],
+            "stats": hash_state["stats"],
         }
 
 
