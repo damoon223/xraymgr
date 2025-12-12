@@ -1,37 +1,50 @@
+import contextlib
+import os
+import sqlite3
+import sys
+import threading
+import time
+from collections import deque
+from pathlib import Path
+from typing import Any, Dict, List, Optional
+
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
-from typing import List, Optional, Dict, Any
 
-import sqlite3
-import os
-import threading
-import time
-import sys
-import contextlib
-from pathlib import Path
-from collections import deque
-
-from .settings import get_db_path
 from .collector import SubscriptionCollector
+from .compress_db import main as compress_db_main
+from .hash_updater import ConfigHashUpdater
 from .importer import RawConfigImporter
 from .json_updater import JsonConfigUpdater
-from .hash_updater import ConfigHashUpdater
-from .compress_db import main as compress_db_main
+from .settings import get_db_path
 
 app = FastAPI(title="XrayMgr Web Dashboard")
 
 BASE_DIR = Path(__file__).resolve().parent
 STATIC_DIR = BASE_DIR / "web_static"
-
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
+_schema_lock = threading.Lock()
+_schema_initialized = False
 
-# ----------------- DB helpers -----------------
+
+def _ensure_schema() -> None:
+    global _schema_initialized
+    if _schema_initialized:
+        return
+    with _schema_lock:
+        if _schema_initialized:
+            return
+        from .schema import init_db_schema
+
+        init_db_schema()
+        _schema_initialized = True
 
 
 def get_connection() -> sqlite3.Connection:
+    _ensure_schema()
     db_path = get_db_path()
     conn = sqlite3.connect(db_path)
     conn.row_factory = sqlite3.Row
@@ -67,11 +80,6 @@ def fetch_table(name: str, limit: int = 100) -> Dict[str, Any]:
 
 
 def run_query(query: str, params: Optional[List[Any]] = None) -> Dict[str, Any]:
-    """
-    اجرای هر نوع کوئری SQLite:
-      - برای SELECT / PRAGMA / ... داده و ستون‌ها را برمی‌گرداند.
-      - برای UPDATE / DELETE / INSERT / DDL، فقط rowcount معنی‌دار است.
-    """
     conn = get_connection()
     try:
         cur = conn.cursor()
@@ -89,93 +97,81 @@ def run_query(query: str, params: Optional[List[Any]] = None) -> Dict[str, Any]:
             data_rows = []
 
         conn.commit()
-
-        return {
-            "columns": columns,
-            "rows": data_rows,
-            "rowcount": cur.rowcount,
-        }
+        return {"columns": columns, "rows": data_rows, "rowcount": cur.rowcount}
     finally:
         conn.close()
 
 
-# ----------------- Background jobs state -----------------
-
-
 collector_lock = threading.Lock()
 
-# حداکثر تعداد خطوط لاگ که در حافظه نگه می‌داریم
 MAX_LOG_LINES = 50
 job_log_buffer: "deque[str]" = deque(maxlen=MAX_LOG_LINES)
 
-collector_state = {
+collector_state: Dict[str, Any] = {
     "running": False,
     "last_started_at": None,
     "last_finished_at": None,
-    "stats": None,      # dict یا None
-    "log": job_log_buffer,  # اشاره به بافر حلقه‌ای
-    "instance": None,   # SubscriptionCollector یا None
+    "stats": None,
+    "log": job_log_buffer,
+    "instance": None,
 }
 
-importer_state = {
+importer_state: Dict[str, Any] = {
     "running": False,
     "last_started_at": None,
     "last_finished_at": None,
-    "stats": None,      # dict یا None
-    "instance": None,   # RawConfigImporter یا None
+    "stats": None,
+    "instance": None,
 }
 
-json_state = {
+json_state: Dict[str, Any] = {
     "running": False,
     "last_started_at": None,
     "last_finished_at": None,
-    "stats": None,      # dict یا None
-    "instance": None,   # JsonConfigUpdater یا None
+    "stats": None,
+    "instance": None,
 }
 
-hash_state = {
+hash_state: Dict[str, Any] = {
     "running": False,
     "last_started_at": None,
     "last_finished_at": None,
-    "stats": None,      # dict یا None
-    "instance": None,   # ConfigHashUpdater یا None
+    "stats": None,
+    "instance": None,
 }
 
-compress_state = {
+compress_state: Dict[str, Any] = {
     "running": False,
     "last_started_at": None,
     "last_finished_at": None,
-    "stats": None,      # dict یا None
-    "instance": None,   # برای سازگاری؛ استاپ نداریم فعلاً
+    "stats": None,
+    "instance": None,
 }
 
 
 class CollectorLogStream:
-    """
-    استریم ساده برای گرفتن خروجی printهای jobها (کالکتور/ایمپورتر/json_updater/hash_updater/compress):
-      - هم‌زمان روی stdout واقعی می‌نویسد
-      - علاوه بر آن، لاگ‌ها را در job_log_buffer (و collector_state["log"]) ذخیره می‌کند
-    """
-
     def write(self, s: str) -> int:
         if not s:
             return 0
+
         sys.__stdout__.write(s)
+
         lines = s.splitlines()
         with collector_lock:
             for line in lines:
                 if line.strip():
                     job_log_buffer.append(line)
+
         return len(s)
 
     def flush(self) -> None:
         sys.__stdout__.flush()
 
 
-def _run_collector_thread():
+def _run_collector_thread() -> None:
     collector = SubscriptionCollector()
-
     log_stream = CollectorLogStream()
+
     with collector_lock:
         collector_state["running"] = True
         collector_state["last_started_at"] = time.time()
@@ -187,11 +183,8 @@ def _run_collector_thread():
     try:
         with contextlib.redirect_stdout(log_stream):
             collector.collect_from_sources_file()
-
         with collector_lock:
-            collector_state["stats"] = {
-                "collector_stats": collector.stats,
-            }
+            collector_state["stats"] = {"collector_stats": collector.stats}
     except Exception as e:
         log_stream.write(f"\n[collector] FATAL ERROR: {e}\n")
     finally:
@@ -201,10 +194,10 @@ def _run_collector_thread():
             collector_state["instance"] = None
 
 
-def _run_importer_thread():
+def _run_importer_thread() -> None:
     importer = RawConfigImporter(batch_size=1000)
-
     log_stream = CollectorLogStream()
+
     with collector_lock:
         importer_state["running"] = True
         importer_state["last_started_at"] = time.time()
@@ -216,11 +209,8 @@ def _run_importer_thread():
     try:
         with contextlib.redirect_stdout(log_stream):
             importer.import_configs()
-
         with collector_lock:
-            importer_state["stats"] = {
-                "importer_stats": importer.stats,
-            }
+            importer_state["stats"] = {"importer_stats": importer.stats}
     except Exception as e:
         log_stream.write(f"\n[importer] FATAL ERROR: {e}\n")
     finally:
@@ -230,10 +220,7 @@ def _run_importer_thread():
             importer_state["instance"] = None
 
 
-def _run_json_thread():
-    """
-    اجرای job آپدیتر JSON در بک‌گراند.
-    """
+def _run_json_thread() -> None:
     log_stream = CollectorLogStream()
 
     with collector_lock:
@@ -274,10 +261,7 @@ def _run_json_thread():
             print("[json_updater] background thread finished.")
 
 
-def _run_hash_thread():
-    """
-    اجرای job آپدیتر hash (config_hash) در بک‌گراند.
-    """
+def _run_hash_thread() -> None:
     log_stream = CollectorLogStream()
 
     with collector_lock:
@@ -318,11 +302,7 @@ def _run_hash_thread():
             print("[hash_updater] background thread finished.")
 
 
-def _run_compress_thread():
-    """
-    اجرای job بکاپ فشرده‌ی دیتابیس در بک‌گراند.
-    از اسکریپت xraymgr.compress_db استفاده می‌کند و لاگ را در پنل نشان می‌دهد.
-    """
+def _run_compress_thread() -> None:
     log_stream = CollectorLogStream()
 
     with collector_lock:
@@ -337,8 +317,7 @@ def _run_compress_thread():
         print("[compress] starting database compression background thread...")
 
         try:
-            db_path = get_db_path()
-            db_path = os.path.abspath(db_path)
+            db_path = os.path.abspath(get_db_path())
             db_dir = os.path.dirname(db_path)
             db_base = os.path.basename(db_path)
             ts = time.strftime("%Y%m%d-%H%M%S")
@@ -346,15 +325,10 @@ def _run_compress_thread():
             out_path = os.path.join(db_dir, out_name)
             print(f"[compress] expected output file: {out_path}")
 
-            # اجرای main اسکریپت که خودش فایل خروجی را می‌سازد
             compress_db_main()
 
             with collector_lock:
-                compress_state["stats"] = {
-                    "compress_stats": {
-                        "output_file": out_path
-                    }
-                }
+                compress_state["stats"] = {"compress_stats": {"output_file": out_path}}
         except Exception as e:
             print(f"[compress] FATAL ERROR inside job: {e}")
         finally:
@@ -365,19 +339,14 @@ def _run_compress_thread():
             print("[compress] background thread finished.")
 
 
-# ----------------- Pydantic models -----------------
-
-
 class SQLQuery(BaseModel):
     query: str
     params: Optional[List[Any]] = None
 
 
-# ----------------- Routes: UI (HTML) -----------------
-
-
 @app.get("/", response_class=HTMLResponse)
-async def index():
+async def index() -> HTMLResponse:
+    _ensure_schema()
     index_path = STATIC_DIR / "index.html"
     try:
         html = index_path.read_text(encoding="utf-8")
@@ -386,24 +355,21 @@ async def index():
     return HTMLResponse(content=html)
 
 
-# ----------------- Routes: API -----------------
-
-
 @app.get("/health")
-async def health():
+async def health() -> Dict[str, Any]:
+    _ensure_schema()
     db_path = get_db_path()
     ok = os.path.exists(db_path)
     return {"status": "ok" if ok else "missing", "db_path": db_path}
 
 
 @app.get("/db/tables")
-async def get_tables():
-    # هنوز API هست، شاید بعداً به درد بخورد؛ UI فعلاً ازش استفاده نمی‌کند.
+async def get_tables() -> JSONResponse:
     return JSONResponse(list_tables())
 
 
 @app.get("/db/table/{table_name}")
-async def get_table(table_name: str, limit: int = 100):
+async def get_table(table_name: str, limit: int = 100) -> JSONResponse:
     try:
         data = fetch_table(table_name, limit=limit)
         return JSONResponse(data)
@@ -412,7 +378,7 @@ async def get_table(table_name: str, limit: int = 100):
 
 
 @app.post("/db/query")
-async def post_query(payload: SQLQuery):
+async def post_query(payload: SQLQuery) -> JSONResponse:
     q = payload.query
     if not q.strip():
         raise HTTPException(status_code=400, detail="Empty query.")
@@ -423,33 +389,30 @@ async def post_query(payload: SQLQuery):
         raise HTTPException(status_code=400, detail=str(e))
 
 
-# ---- Collector endpoints ----
-
-
 @app.post("/collector/run")
-async def run_collector():
+async def run_collector() -> Dict[str, str]:
     with collector_lock:
         if collector_state["running"]:
             raise HTTPException(status_code=409, detail="Collector is already running")
-        t = threading.Thread(target=_run_collector_thread, daemon=True)
-        t.start()
+    t = threading.Thread(target=_run_collector_thread, daemon=True)
+    t.start()
     return {"status": "started"}
 
 
 @app.post("/collector/stop")
-async def stop_collector():
+async def stop_collector() -> Dict[str, str]:
     with collector_lock:
         if not collector_state["running"]:
             raise HTTPException(status_code=409, detail="Collector is not running")
         inst = collector_state.get("instance")
-    if inst is None:
-        raise HTTPException(status_code=500, detail="Collector instance not available")
+        if inst is None:
+            raise HTTPException(status_code=500, detail="Collector instance not available")
     inst.request_stop()
     return {"status": "stopping"}
 
 
 @app.get("/collector/status")
-async def collector_status():
+async def collector_status() -> Dict[str, Any]:
     with collector_lock:
         return {
             "running": collector_state["running"],
@@ -461,48 +424,40 @@ async def collector_status():
 
 
 @app.get("/collector/log")
-async def collector_log(offset: int = Query(0, ge=0)):
-    """
-    برای سازگاری با نسخه‌های قدیمی UI:
-    - از job_log_buffer می‌خوانیم (حداکثر ۵۰ خط)
-    - offset همچنان پشتیبانی می‌شود، هرچند UI جدید دیگر از آن استفاده نمی‌کند.
-    """
+async def collector_log(offset: int = Query(0, ge=0)) -> Dict[str, Any]:
     with collector_lock:
         lines = list(job_log_buffer)
         total = len(lines)
         if offset < 0 or offset > total:
             offset = 0
         sliced = lines[offset:]
-    return {"offset": offset, "total": total, "lines": sliced}
-
-
-# ---- Importer endpoints ----
+        return {"offset": offset, "total": total, "lines": sliced}
 
 
 @app.post("/importer/run")
-async def run_importer():
+async def run_importer() -> Dict[str, str]:
     with collector_lock:
         if importer_state["running"]:
             raise HTTPException(status_code=409, detail="Importer is already running")
-        t = threading.Thread(target=_run_importer_thread, daemon=True)
-        t.start()
+    t = threading.Thread(target=_run_importer_thread, daemon=True)
+    t.start()
     return {"status": "started"}
 
 
 @app.post("/importer/stop")
-async def stop_importer():
+async def stop_importer() -> Dict[str, str]:
     with collector_lock:
         if not importer_state["running"]:
             raise HTTPException(status_code=409, detail="Importer is not running")
         inst = importer_state.get("instance")
-    if inst is None:
-        raise HTTPException(status_code=500, detail="Importer instance not available")
+        if inst is None:
+            raise HTTPException(status_code=500, detail="Importer instance not available")
     inst.request_stop()
     return {"status": "stopping"}
 
 
 @app.get("/importer/status")
-async def importer_status():
+async def importer_status() -> Dict[str, Any]:
     with collector_lock:
         return {
             "running": importer_state["running"],
@@ -512,33 +467,30 @@ async def importer_status():
         }
 
 
-# ---- JSON updater endpoints ----
-
-
 @app.post("/json/run")
-async def run_json():
+async def run_json() -> Dict[str, str]:
     with collector_lock:
         if json_state["running"]:
             raise HTTPException(status_code=409, detail="JSON updater is already running")
-        t = threading.Thread(target=_run_json_thread, daemon=True)
-        t.start()
+    t = threading.Thread(target=_run_json_thread, daemon=True)
+    t.start()
     return {"status": "started"}
 
 
 @app.post("/json/stop")
-async def stop_json():
+async def stop_json() -> Dict[str, str]:
     with collector_lock:
         if not json_state["running"]:
             raise HTTPException(status_code=409, detail="JSON updater is not running")
         inst = json_state.get("instance")
-    if inst is None:
-        raise HTTPException(status_code=500, detail="JSON updater instance not available")
+        if inst is None:
+            raise HTTPException(status_code=500, detail="JSON updater instance not available")
     inst.request_stop()
     return {"status": "stopping"}
 
 
 @app.get("/json/status")
-async def json_status():
+async def json_status() -> Dict[str, Any]:
     with collector_lock:
         return {
             "running": json_state["running"],
@@ -548,33 +500,30 @@ async def json_status():
         }
 
 
-# ---- Hash updater endpoints ----
-
-
 @app.post("/hash/run")
-async def run_hash():
+async def run_hash() -> Dict[str, str]:
     with collector_lock:
         if hash_state["running"]:
             raise HTTPException(status_code=409, detail="Hash updater is already running")
-        t = threading.Thread(target=_run_hash_thread, daemon=True)
-        t.start()
+    t = threading.Thread(target=_run_hash_thread, daemon=True)
+    t.start()
     return {"status": "started"}
 
 
 @app.post("/hash/stop")
-async def stop_hash():
+async def stop_hash() -> Dict[str, str]:
     with collector_lock:
         if not hash_state["running"]:
             raise HTTPException(status_code=409, detail="Hash updater is not running")
         inst = hash_state.get("instance")
-    if inst is None:
-        raise HTTPException(status_code=500, detail="Hash updater instance not available")
+        if inst is None:
+            raise HTTPException(status_code=500, detail="Hash updater instance not available")
     inst.request_stop()
     return {"status": "stopping"}
 
 
 @app.get("/hash/status")
-async def hash_status():
+async def hash_status() -> Dict[str, Any]:
     with collector_lock:
         return {
             "running": hash_state["running"],
@@ -584,21 +533,18 @@ async def hash_status():
         }
 
 
-# ---- Compress (DB backup) endpoints ----
-
-
 @app.post("/compress/run")
-async def run_compress():
+async def run_compress() -> Dict[str, str]:
     with collector_lock:
         if compress_state["running"]:
             raise HTTPException(status_code=409, detail="Compress job is already running")
-        t = threading.Thread(target=_run_compress_thread, daemon=True)
-        t.start()
+    t = threading.Thread(target=_run_compress_thread, daemon=True)
+    t.start()
     return {"status": "started"}
 
 
 @app.get("/compress/status")
-async def compress_status():
+async def compress_status() -> Dict[str, Any]:
     with collector_lock:
         return {
             "running": compress_state["running"],
@@ -608,17 +554,9 @@ async def compress_status():
         }
 
 
-# ---- Jobs summary endpoint (برای UI جدید) ----
-
-
 @app.get("/jobs/summary")
-async def jobs_summary():
-    """
-    یک شات کلی برای پنل:
-      - مسیر دیتابیس
-      - وضعیت همهٔ jobها
-      - آخرین ۵۰ خط لاگ مشترک
-    """
+async def jobs_summary() -> Dict[str, Any]:
+    _ensure_schema()
     db_path = get_db_path()
     with collector_lock:
         log_lines = list(job_log_buffer)
@@ -655,15 +593,13 @@ async def jobs_summary():
             },
         }
 
-    return {
-        "db_path": db_path,
-        "jobs": jobs,
-        "log": {
-            "lines": log_lines,
-            "total": len(log_lines),
-        },
-    }
+        return {
+            "db_path": db_path,
+            "jobs": jobs,
+            "log": {"lines": log_lines, "total": len(log_lines)},
+        }
 
 
-def get_app():
+def get_app() -> FastAPI:
+    _ensure_schema()
     return app
