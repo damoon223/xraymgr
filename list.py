@@ -7,6 +7,9 @@ APP_DIR = os.path.join(BASE_DIR, "app")
 DATA_DIR = os.path.join(BASE_DIR, "data")
 OUTPUT_FILE = os.path.join(BASE_DIR, "filelist.txt")
 
+# پوشهٔ web_static برای فایل‌های فرانت‌اند پنل
+WEB_STATIC_DIR = os.path.join(APP_DIR, "xraymgr", "web_static")
+
 # تنظیمات گیت‌هاب
 GITHUB_USER = "damoon223"
 GITHUB_REPO = "xraymgr"
@@ -98,6 +101,17 @@ def main():
                     continue
                 rel_path = os.path.relpath(full_path, BASE_DIR)
                 entries[rel_path.replace("\\", "/")] = "f"
+
+    # 4) فایل‌های front پنل در web_static (index.html / dashboard.js / dashboard.css)
+    if os.path.isdir(WEB_STATIC_DIR):
+        for fname in ("index.html", "dashboard.js", "dashboard.css"):
+            full_path = os.path.join(WEB_STATIC_DIR, fname)
+            if not os.path.isfile(full_path):
+                continue
+            if is_excluded(full_path):
+                continue
+            rel_path = os.path.relpath(full_path, BASE_DIR)
+            entries[rel_path.replace("\\", "/")] = "f"
 
     # تبدیل مسیر نسبی به URL گیت‌هاب
     def to_github_url(path: str, kind: str) -> str:

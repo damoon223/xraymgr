@@ -2,7 +2,7 @@ import os
 import re
 import sqlite3
 import threading
-from typing import List, Optional, Tuple
+from typing import List
 
 from .settings import get_db_path
 
@@ -18,17 +18,18 @@ class RawConfigImporter:
 
     دو مرحله اصلی:
 
-      1) خواندن data/raw/raw_configs.txt و وارد کردن هر خط به ستون url در links
-         (با INSERT OR IGNORE برای جلوگیری از تکرار).
+    1) خواندن data/raw/raw_configs.txt و وارد کردن هر خط به ستون url در links
+       (با INSERT OR IGNORE برای جلوگیری از تکرار).
 
-      2) نرمالایز URLها در جدول links:
-           - فقط ردیف‌هایی که:
-               * config_hash خالی دارند
-               * is_invalid = 0
-               * is_protocol_unsupported = 0
-           - اگر در یک url چندین کانفیگ (vmess/vless/ss/trojan) چسبیده باشد،
-             آن را به چند url جدا می‌شکنیم، برای هرکدام رکورد جدید می‌سازیم
-             (INSERT OR IGNORE)، و رکورد اصلی را حذف می‌کنیم.
+    2) نرمالایز URLها در جدول links:
+       - فقط ردیف‌هایی که:
+         * config_hash خالی دارند
+         * is_invalid = 0
+         * is_protocol_unsupported = 0
+         * url غیرخالی دارند
+       - اگر در یک url چندین کانفیگ (vmess/vless/ss/trojan/hysteria2/hy2/tuic/…) چسبیده باشد،
+         آن را به چند url جدا می‌شکنیم، برای هرکدام رکورد جدید می‌سازیم (INSERT OR IGNORE)،
+         و رکورد اصلی را به‌جای حذف، به‌صورت is_invalid = 1 علامت‌گذاری می‌کنیم.
 
     stats (برای پنل وب):
       - total_lines: تعداد کل خطوط خوانده‌شده از فایل raw
@@ -39,12 +40,18 @@ class RawConfigImporter:
     آمار اضافه:
       - normalize_batches: تعداد batchهای نرمالایز
       - normalize_candidates: تعداد URLهایی که multi-link تشخیص داده شده‌اند
-      - normalized_rows: تعداد رکوردهای اصلیِ multi-link که حذف شدند
+      - normalized_rows: تعداد رکوردهای اصلیِ multi-link که بعد از split به‌عنوان invalid علامت‌گذاری شده‌اند
       - normalized_new_links: تعداد لینک‌های جدیدی که در نتیجهٔ نرمالایز درج شدند
     """
 
-    # برای تشخیص پروتکل‌ها در URL
-    _PROTO_RE = re.compile(r"(vmess|vless|trojan|ss)://", re.IGNORECASE)
+    # برای تشخیص مرز پروتکل‌ها در URL.
+    # علاوه بر پروتکل‌های ساپورت‌شده در JSON updater، پروتکل‌های رایج دیگری مثل
+    # hysteria2 / hy2 / tuic / ssr را هم لحاظ می‌کنیم تا multi-linkهای ترکیبی
+    # (مثل ss + hysteria2 + ...) هم شکسته شوند.
+    _PROTO_RE = re.compile(
+        r"(vmess|vless|trojan|ssr|ss|shadowsocks2022|shadowsocks|hysteria2|hysteria|hy2|tuic)://",
+        re.IGNORECASE,
+    )
 
     def __init__(self, batch_size: int = 1000) -> None:
         self.batch_size = batch_size
@@ -79,9 +86,9 @@ class RawConfigImporter:
         """
         مسیر فایل raw_configs.txt بر اساس ساختار repo:
 
-            /opt/xraymgr/app/xraymgr/importer.py   → __file__
-            /opt/xraymgr                          → BASE_DIR
-            /opt/xraymgr/data/raw/raw_configs.txt → فایل ورودی
+        /opt/xraymgr/app/xraymgr/importer.py  →  __file__
+        /opt/xraymgr                         →  BASE_DIR
+        /opt/xraymgr/data/raw/raw_configs.txt → فایل ورودی
         """
         base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         return os.path.join(base_dir, "data", "raw", "raw_configs.txt")
@@ -90,17 +97,24 @@ class RawConfigImporter:
 
     def _split_multi_config_url(self, url: str) -> List[str]:
         """
-        یک رشتهٔ url که ممکن است چند کانفیگ چسبیده داخلش باشد را به چند
-        url جداگانه تبدیل می‌کند.
+        یک رشتهٔ url که ممکن است چند کانفیگ چسبیده داخلش باشد را
+        به چند url جداگانه تبدیل می‌کند.
 
-        مثال:  vless://.....vmess://.....ss://...
-        → [ 'vless://.....', 'vmess://.....', 'ss://...' ]
+        مثال:
+            vless://.....vmess://.....ss://...
+            →
+            [
+              'vless://.....',
+              'vmess://.....',
+              'ss://...'
+            ]
 
         اگر فقط یک پروتکل پیدا شود → [url] برمی‌گرداند.
         اگر هیچ پروتکلی پیدا نشود → [url] (کاری به آن نداریم).
         """
         if not url:
             return []
+
         s = str(url).strip()
         if not s:
             return []
@@ -109,6 +123,7 @@ class RawConfigImporter:
         if not matches:
             # نمی‌دانیم چیست؛ به‌عنوان یک URL تکی در نظر گرفته می‌شود
             return [s]
+
         if len(matches) == 1:
             # تنها یک پروتکل → همین URL تکی است
             return [s]
@@ -120,6 +135,7 @@ class RawConfigImporter:
             segment = s[start:end].strip()
             if segment:
                 parts.append(segment)
+
         return parts
 
     # ---------- مرحلهٔ ۱: ایمپورت از فایل raw ----------
@@ -127,11 +143,13 @@ class RawConfigImporter:
     def _import_from_raw_file(self, conn: sqlite3.Connection) -> None:
         raw_path = self._get_raw_file_path()
         if not os.path.exists(raw_path):
-            print(f"[importer] raw configs file not found at {raw_path!r}, skipping import step.")
+            print(
+                f"[importer] raw configs file not found at {raw_path!r}, "
+                f"skipping import step."
+            )
             return
 
         print(f"[importer] importing from raw file: {raw_path!r}")
-
         cur = conn.cursor()
         batch_ops = 0
 
@@ -141,7 +159,6 @@ class RawConfigImporter:
                     self._check_stopped()
 
                     stripped = line.strip()
-
                     with self._stats_lock:
                         self.stats["total_lines"] += 1
 
@@ -175,13 +192,19 @@ class RawConfigImporter:
                                 f"(last line_no={line_no})"
                             )
                         except sqlite3.Error as e:
-                            print(f"[importer] ERROR committing insert batch: {e}")
+                            print(
+                                f"[importer] ERROR committing insert batch: {e}"
+                            )
                         batch_ops = 0
 
         except FileNotFoundError:
-            print(f"[importer] raw file disappeared during import: {raw_path!r}")
+            print(
+                f"[importer] raw file disappeared during import: {raw_path!r}"
+            )
         except UnicodeDecodeError as e:
-            print(f"[importer] encoding error while reading raw file: {e}")
+            print(
+                f"[importer] encoding error while reading raw file: {e}"
+            )
 
         # commit نهایی اگر چیزی مانده باشد
         if batch_ops > 0:
@@ -189,9 +212,13 @@ class RawConfigImporter:
                 conn.commit()
                 with self._stats_lock:
                     self.stats["batches_committed"] += 1
-                print(f"[importer] committed final batch of {batch_ops} inserts")
+                print(
+                    f"[importer] committed final batch of {batch_ops} inserts"
+                )
             except sqlite3.Error as e:
-                print(f"[importer] ERROR committing final insert batch: {e}")
+                print(
+                    f"[importer] ERROR committing final insert batch: {e}"
+                )
 
     # ---------- مرحلهٔ ۲: نرمالایز URLها در DB ----------
 
@@ -199,20 +226,19 @@ class RawConfigImporter:
         """
         روی جدول links پاس نرمالایز اجرا می‌کند:
 
-          - فقط ردیف‌هایی که:
-              * config_hash خالی دارند
-              * is_invalid = 0
-              * is_protocol_unsupported = 0
-              * url غیرخالی دارند
+        - فقط ردیف‌هایی که:
+          * config_hash خالی دارند
+          * is_invalid = 0
+          * is_protocol_unsupported = 0
+          * url غیرخالی دارند
 
-          - اگر url شامل چندین پروتکل vmess/vless/ss/trojan باشد، به چند
-            url جداگانه شکسته می‌شود، برای هرکدام INSERT OR IGNORE می‌زنیم،
-            و رکورد اصلی را حذف می‌کنیم.
+        - اگر url شامل چندین پروتکل vmess/vless/ss/trojan/hysteria2/hy2/tuic/ssr/...
+          باشد، به چند url جداگانه شکسته می‌شود، برای هرکدام INSERT OR IGNORE می‌زنیم،
+          و رکورد اصلی multi-link را حذف نمی‌کنیم، بلکه آن را با is_invalid = 1 علامت‌گذاری می‌کنیم.
         """
         print("[importer] starting URL normalization pass (multi-link splitter)")
 
         last_id = 0
-
         while True:
             self._check_stopped()
 
@@ -249,6 +275,7 @@ class RawConfigImporter:
                 url = str(row["url"])
 
                 parts = self._split_multi_config_url(url)
+
                 # اگر فقط یک بخش باشد، نیازی به نرمالایز نیست
                 if len(parts) <= 1:
                     continue
@@ -257,7 +284,6 @@ class RawConfigImporter:
                     self.stats["normalize_candidates"] += 1
 
                 new_inserted = 0
-
                 for part in parts:
                     try:
                         cur.execute(
@@ -268,14 +294,21 @@ class RawConfigImporter:
                             new_inserted += 1
                     except sqlite3.Error as e:
                         print(
-                            f"[importer] ERROR inserting normalized url part for id={row_id}: {e}"
+                            "[importer] ERROR inserting normalized url part "
+                            f"for id={row_id}: {e}"
                         )
 
-                # رکورد اصلی multi-link را حذف می‌کنیم
+                # رکورد اصلی multi-link را حذف نمی‌کنیم؛ به‌جای آن invalid می‌کنیم
                 try:
-                    cur.execute("DELETE FROM links WHERE id = ?", (row_id,))
+                    cur.execute(
+                        "UPDATE links SET is_invalid = 1 WHERE id = ?",
+                        (row_id,),
+                    )
                 except sqlite3.Error as e:
-                    print(f"[importer] ERROR deleting multi-link row id={row_id}: {e}")
+                    print(
+                        f"[importer] ERROR marking multi-link row id={row_id} "
+                        f"as invalid: {e}"
+                    )
                 else:
                     changes += 1
                     with self._stats_lock:
@@ -286,7 +319,9 @@ class RawConfigImporter:
                 try:
                     conn.commit()
                 except sqlite3.Error as e:
-                    print(f"[importer] ERROR committing normalization batch: {e}")
+                    print(
+                        f"[importer] ERROR committing normalization batch: {e}"
+                    )
 
         print("[importer] URL normalization pass finished.")
 
@@ -296,8 +331,8 @@ class RawConfigImporter:
         """
         نقطهٔ اصلی اجرای job ایمپورتر:
 
-          1) ایمپورت از فایل raw_configs.txt به جدول links
-          2) نرمالایز URLها در جدول links (multi-link splitter)
+        1) ایمپورت از فایل raw_configs.txt به جدول links
+        2) نرمالایز URLها در جدول links (multi-link splitter)
         """
         print(f"[importer] starting import job (batch_size={self.batch_size})")
 
@@ -326,14 +361,17 @@ class RawConfigImporter:
         # گزارش نهایی
         print(
             "[importer] job finished:"
-            f"\n total_lines (raw file): {self.stats['total_lines']}"
-            f"\n valid_configs (non-empty lines): {self.stats['valid_configs']}"
-            f"\n inserted (new links): {self.stats['inserted']}"
-            f"\n batches_committed (import): {self.stats['batches_committed']}"
-            f"\n normalize_batches: {self.stats['normalize_batches']}"
-            f"\n normalize_candidates (multi-link urls): {self.stats['normalize_candidates']}"
-            f"\n normalized_rows (original multi-link rows deleted): {self.stats['normalized_rows']}"
-            f"\n normalized_new_links (links inserted from splits): {self.stats['normalized_new_links']}"
+            f"\n  total_lines (raw file): {self.stats['total_lines']}"
+            f"\n  valid_configs (non-empty lines): {self.stats['valid_configs']}"
+            f"\n  inserted (new links): {self.stats['inserted']}"
+            f"\n  batches_committed (import): {self.stats['batches_committed']}"
+            f"\n  normalize_batches: {self.stats['normalize_batches']}"
+            f"\n  normalize_candidates (multi-link urls): "
+            f"{self.stats['normalize_candidates']}"
+            f"\n  normalized_rows (original multi-link rows marked invalid): "
+            f"{self.stats['normalized_rows']}"
+            f"\n  normalized_new_links (links inserted from splits): "
+            f"{self.stats['normalized_new_links']}"
         )
 
 
