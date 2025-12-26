@@ -2,7 +2,7 @@ import os
 import re
 import sqlite3
 import threading
-from typing import List
+from typing import List, Optional
 
 from .settings import BASE_DIR, get_db_path
 
@@ -19,12 +19,20 @@ class RawConfigImporter:
       1) خواندن data/raw/raw_configs.txt و وارد کردن هر خط به ستون url در links
          (با INSERT OR IGNORE برای جلوگیری از تکرار).
       2) نرمالایز URLها در جدول links (multi-link splitter).
+
+    مرحلهٔ اضافه (طبق درخواست جدید):
+      3) بعد از نرمالایز کردن، هر پروتکلی غیر از vless/vmess/ss/trojan
+         تیک is_protocol_unsupported می‌خورد و دیگر انتخاب نمی‌شود.
     """
 
+    # برای split کردن multi-config URLها (عمداً گسترده‌تر از ساپورت نهایی است)
     _PROTO_RE = re.compile(
         r"(vmess|vless|trojan|ssr|ss|shadowsocks2022|shadowsocks|hysteria2|hysteria|hy2|tuic)://",
         re.IGNORECASE,
     )
+
+    # فقط این‌ها ساپورت هستند؛ غیر از این‌ها => is_protocol_unsupported=1
+    _SUPPORTED_PROTOCOLS = {"vmess", "vless", "ss", "trojan"}
 
     def __init__(self, batch_size: int = 1000) -> None:
         self.batch_size = int(batch_size)
@@ -37,11 +45,15 @@ class RawConfigImporter:
             "normalize_candidates": 0,
             "normalized_rows": 0,
             "normalized_new_links": 0,
+            "unsupported_batches": 0,
+            "unsupported_scanned": 0,
+            "unsupported_marked": 0,
         }
         self._stop_event = threading.Event()
         self._stats_lock = threading.Lock()
 
     # ---------- کنترل توقف ----------
+
     def request_stop(self) -> None:
         print("[importer] stop requested")
         self._stop_event.set()
@@ -51,6 +63,7 @@ class RawConfigImporter:
             raise ImporterStopped()
 
     # ---------- schema helpers ----------
+
     @staticmethod
     def _table_columns(conn: sqlite3.Connection, table: str) -> List[str]:
         cur = conn.cursor()
@@ -79,11 +92,24 @@ class RawConfigImporter:
         conn.commit()
 
     # ---------- مسیر فایل raw ----------
+
     @staticmethod
     def _get_raw_file_path() -> str:
         return os.path.join(os.fspath(BASE_DIR), "data", "raw", "raw_configs.txt")
 
     # ---------- ابزارهای نرمال‌سازی URL ----------
+
+    @staticmethod
+    def _detect_protocol(url: str) -> Optional[str]:
+        if not url:
+            return None
+        s = str(url).strip()
+        m = re.match(r"^([a-zA-Z0-9+.\-]+)://", s)
+        if not m:
+            return None
+        p = (m.group(1) or "").strip().lower()
+        return p or None
+
     def _split_multi_config_url(self, url: str) -> List[str]:
         if not url:
             return []
@@ -104,9 +130,11 @@ class RawConfigImporter:
             segment = s[start:end].strip()
             if segment:
                 parts.append(segment)
+
         return parts
 
     # ---------- مرحلهٔ ۱: ایمپورت از فایل raw ----------
+
     def _import_from_raw_file(self, conn: sqlite3.Connection) -> None:
         raw_path = self._get_raw_file_path()
         if not os.path.exists(raw_path):
@@ -168,6 +196,7 @@ class RawConfigImporter:
                 print(f"[importer] ERROR committing final insert batch: {e}")
 
     # ---------- مرحلهٔ ۲: نرمالایز URLها در DB ----------
+
     def _normalize_links(self, conn: sqlite3.Connection) -> None:
         print("[importer] starting URL normalization pass (multi-link splitter)")
 
@@ -176,6 +205,7 @@ class RawConfigImporter:
         has_unsupported = "is_protocol_unsupported" in cols
 
         last_id = 0
+
         while True:
             self._check_stopped()
 
@@ -199,6 +229,7 @@ class RawConfigImporter:
             cur = conn.cursor()
             cur.execute(sql, (last_id, self.batch_size))
             rows = cur.fetchall()
+
             if not rows:
                 break
 
@@ -206,13 +237,14 @@ class RawConfigImporter:
                 self.stats["normalize_batches"] += 1
 
             changes = 0
+
             for row in rows:
                 self._check_stopped()
 
                 row_id = int(row["id"])
                 last_id = row_id
-                url = str(row["url"])
 
+                url = str(row["url"])
                 parts = self._split_multi_config_url(url)
                 if len(parts) <= 1:
                     continue
@@ -221,6 +253,7 @@ class RawConfigImporter:
                     self.stats["normalize_candidates"] += 1
 
                 new_inserted = 0
+
                 for part in parts:
                     try:
                         cur.execute("INSERT OR IGNORE INTO links (url) VALUES (?)", (part,))
@@ -253,7 +286,94 @@ class RawConfigImporter:
 
         print("[importer] URL normalization pass finished.")
 
+    # ---------- مرحلهٔ ۳: علامت‌گذاری پروتکل‌های غیرپشتیبانی‌شده ----------
+
+    def _mark_unsupported_protocols(self, conn: sqlite3.Connection) -> None:
+        cols = set(self._table_columns(conn, "links"))
+        has_is_invalid = "is_invalid" in cols
+        has_unsupported = "is_protocol_unsupported" in cols
+
+        if not has_unsupported:
+            print("[importer] is_protocol_unsupported column not found; skipping unsupported marking.")
+            return
+
+        print("[importer] marking unsupported protocols (after normalization)")
+
+        last_id = 0
+
+        while True:
+            self._check_stopped()
+
+            where_parts = [
+                "url IS NOT NULL",
+                "TRIM(url) <> ''",
+                "is_protocol_unsupported = 0",
+                "id > ?",
+            ]
+            if has_is_invalid:
+                where_parts.append("is_invalid = 0")
+
+            sql = (
+                "SELECT id, url FROM links "
+                f"WHERE {' AND '.join(where_parts)} "
+                "ORDER BY id LIMIT ?"
+            )
+
+            cur = conn.cursor()
+            cur.execute(sql, (last_id, self.batch_size))
+            rows = cur.fetchall()
+            if not rows:
+                break
+
+            with self._stats_lock:
+                self.stats["unsupported_batches"] += 1
+
+            to_mark: List[int] = []
+
+            for row in rows:
+                self._check_stopped()
+
+                row_id = int(row["id"])
+                last_id = row_id
+
+                url = str(row["url"] or "").strip()
+                if not url:
+                    continue
+
+                with self._stats_lock:
+                    self.stats["unsupported_scanned"] += 1
+
+                proto = self._detect_protocol(url)
+                if proto and proto not in self._SUPPORTED_PROTOCOLS:
+                    to_mark.append(row_id)
+
+            if not to_mark:
+                continue
+
+            try:
+                cur.execute("BEGIN")
+                if has_is_invalid:
+                    cur.executemany(
+                        "UPDATE links SET is_protocol_unsupported = 1, is_invalid = 0 WHERE id = ?",
+                        [(i,) for i in to_mark],
+                    )
+                else:
+                    cur.executemany(
+                        "UPDATE links SET is_protocol_unsupported = 1 WHERE id = ?",
+                        [(i,) for i in to_mark],
+                    )
+                conn.commit()
+                with self._stats_lock:
+                    self.stats["unsupported_marked"] += len(to_mark)
+                print(f"[importer] marked {len(to_mark)} rows as protocol_unsupported")
+            except sqlite3.Error as e:
+                conn.rollback()
+                print(f"[importer] ERROR marking protocol_unsupported: {e}")
+
+        print("[importer] unsupported protocol marking finished.")
+
     # ---------- نقطهٔ ورود اصلی ----------
+
     def import_configs(self) -> None:
         print(f"[importer] starting import job (batch_size={self.batch_size})")
 
@@ -271,6 +391,7 @@ class RawConfigImporter:
 
             self._import_from_raw_file(conn)
             self._normalize_links(conn)
+            self._mark_unsupported_protocols(conn)
 
         except ImporterStopped:
             print("[importer] stopped by request.")
@@ -291,6 +412,9 @@ class RawConfigImporter:
             f"\n normalize_candidates (multi-link urls): {self.stats['normalize_candidates']}"
             f"\n normalized_rows (original multi-link rows marked invalid): {self.stats['normalized_rows']}"
             f"\n normalized_new_links (links inserted from splits): {self.stats['normalized_new_links']}"
+            f"\n unsupported_batches: {self.stats['unsupported_batches']}"
+            f"\n unsupported_scanned: {self.stats['unsupported_scanned']}"
+            f"\n unsupported_marked: {self.stats['unsupported_marked']}"
         )
 
 

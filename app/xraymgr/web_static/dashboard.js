@@ -1,520 +1,496 @@
-const dbPathEl = document.getElementById("db-path");
-const footerDbPathEl = document.getElementById("footer-db-path");
+(() => {
+  "use strict";
 
-const sqlInput = document.getElementById("sql-input");
-const sqlStatus = document.getElementById("sql-status");
-const sqlResult = document.getElementById("sql-result");
-const sqlPresets = document.getElementById("sql-presets");
+  // -------- عناصر --------
+  const dbPathEl = document.getElementById("db-path");
+  const footerDbPathEl = document.getElementById("footer-db-path");
 
-const collectorStatusEl = document.getElementById("collector-status");
-const collectorStatsEl = document.getElementById("collector-stats");
-const collectorLogEl = document.getElementById("collector-log");
-const collectorRunBtn = document.getElementById("collector-run-btn");
-const collectorStopBtn = document.getElementById("collector-stop-btn");
+  const sqlInput = document.getElementById("sql-input");
+  const sqlStatus = document.getElementById("sql-status");
+  const sqlResult = document.getElementById("sql-result");
+  const sqlPresets = document.getElementById("sql-presets");
+  const sqlRunBtn = document.getElementById("sql-run-btn");
 
-const importerStatusEl = document.getElementById("importer-status");
-const importerStatsEl = document.getElementById("importer-stats");
-const importerRunBtn = document.getElementById("importer-run-btn");
-const importerStopBtn = document.getElementById("importer-stop-btn");
+  const collectorStatusEl = document.getElementById("collector-status");
+  const collectorStatsEl = document.getElementById("collector-stats");
+  const collectorLogEl = document.getElementById("collector-log");
+  const collectorRunBtn = document.getElementById("collector-run-btn");
+  const collectorStopBtn = document.getElementById("collector-stop-btn");
 
-const jsonStatusEl = document.getElementById("json-status");
-const jsonStatsEl = document.getElementById("json-stats");
-const jsonRunBtn = document.getElementById("json-run-btn");
-const jsonStopBtn = document.getElementById("json-stop-btn");
+  const importerStatusEl = document.getElementById("importer-status");
+  const importerStatsEl = document.getElementById("importer-stats");
+  const importerRunBtn = document.getElementById("importer-run-btn");
+  const importerStopBtn = document.getElementById("importer-stop-btn");
 
-const hashStatusEl = document.getElementById("hash-status");
-const hashStatsEl = document.getElementById("hash-stats");
-const hashRunBtn = document.getElementById("hash-run-btn");
-const hashStopBtn = document.getElementById("hash-stop-btn");
+  const jsonStatusEl = document.getElementById("json-status");
+  const jsonStatsEl = document.getElementById("json-stats");
+  const jsonRunBtn = document.getElementById("json-run-btn");
+  const jsonStopBtn = document.getElementById("json-stop-btn");
 
-const compressStatusEl = document.getElementById("compress-status");
-const compressStatsEl = document.getElementById("compress-stats");
-const compressRunBtn = document.getElementById("compress-run-btn");
+  const jsonRepairStatusEl = document.getElementById("json-repair-status");
+  const jsonRepairStatsEl = document.getElementById("json-repair-stats");
+  const jsonRepairRunBtn = document.getElementById("json-repair-run-btn");
+  const jsonRepairStopBtn = document.getElementById("json-repair-stop-btn");
 
-const tabButtons = document.querySelectorAll(".tab-button");
-const tabContents = document.querySelectorAll(".tab-content");
+  const hashStatusEl = document.getElementById("hash-status");
+  const hashStatsEl = document.getElementById("hash-stats");
+  const hashRunBtn = document.getElementById("hash-run-btn");
+  const hashStopBtn = document.getElementById("hash-stop-btn");
 
-// وضعیت runtime (در صورت نیاز)
-let collectorRunning = false;
-let importerRunning = false;
-let jsonRunning = false;
-let hashRunning = false;
-let compressRunning = false;
+  const groupStatusEl = document.getElementById("group-status");
+  const groupStatsEl = document.getElementById("group-stats");
+  const groupRunBtn = document.getElementById("group-run-btn");
+  const groupStopBtn = document.getElementById("group-stop-btn");
 
-function switchTab(target) {
+  const compressStatusEl = document.getElementById("compress-status");
+  const compressStatsEl = document.getElementById("compress-stats");
+  const compressRunBtn = document.getElementById("compress-run-btn");
+
+  const tabButtons = document.querySelectorAll(".tab-button");
+  const tabContents = document.querySelectorAll(".tab-content");
+
+  // -------- ابزارها --------
+  function escapeHtml(str) {
+    return String(str)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;");
+  }
+
+  function safeText(el, text) {
+    if (!el) return;
+    el.textContent = text;
+  }
+
+  function safeHtml(el, html) {
+    if (!el) return;
+    el.innerHTML = html;
+  }
+
+  function setButtons(runBtn, stopBtn, running) {
+    if (runBtn) runBtn.disabled = !!running;
+    if (stopBtn) stopBtn.disabled = !running;
+  }
+
+  function withTimeout(ms) {
+    // timeout برای fetch تا هیچ ریکوئستی پنل را قفل نکند
+    const controller = new AbortController();
+    const id = setTimeout(() => controller.abort(), ms);
+    return { signal: controller.signal, cancel: () => clearTimeout(id) };
+  }
+
+  async function fetchJson(url, opts = {}, timeoutMs = 8000) {
+    const t = withTimeout(timeoutMs);
+    try {
+      const res = await fetch(url, {
+        cache: "no-store",
+        ...opts,
+        signal: t.signal,
+      });
+      if (!res.ok) {
+        const txt = await res.text().catch(() => "");
+        throw new Error(txt || ("HTTP " + res.status));
+      }
+      return await res.json().catch(() => ({}));
+    } finally {
+      t.cancel();
+    }
+  }
+
+  // -------- Tab --------
+  function switchTab(target) {
     tabButtons.forEach((btn) => {
-        btn.classList.toggle("active", btn.dataset.tab === target);
+      btn.classList.toggle("active", btn.dataset.tab === target);
     });
     tabContents.forEach((tab) => {
-        tab.classList.toggle("active", tab.id === "tab-" + target);
+      tab.classList.toggle("active", tab.id === "tab-" + target);
     });
-}
+  }
 
-async function refreshHealth() {
-    try {
-        const res = await fetch("/health");
-        if (!res.ok) throw new Error("HTTP " + res.status);
-        const data = await res.json();
-        if (dbPathEl) dbPathEl.textContent = data.db_path || "unknown";
-        if (footerDbPathEl) footerDbPathEl.textContent = data.db_path || "unknown";
-    } catch (err) {
-        // اگر چیزی خراب باشد، همین که db-path خالی نیست برای ما کافی است
-    }
-}
+  tabButtons.forEach((btn) => {
+    btn.addEventListener("click", () => switchTab(btn.dataset.tab));
+  });
 
-function renderTable(data, container) {
-    const cols = data.columns || [];
-    const rows = data.rows || [];
-    if (cols.length === 0) {
-        container.innerHTML = '<div class="muted">هیچ ستونی برای نمایش نیست.</div>';
-        return;
-    }
-    let html = '<table><thead><tr>';
-    cols.forEach(c => {
-        html += `<th>${escapeHtml(c)}</th>`;
+  // -------- Presets --------
+  const PRESET_QUERIES = [
+    { label: "کوئری آماده…", value: "" },
+    { label: "۱۰ سطر اول links", value: "select * from links limit 10" },
+    { label: "select count(*) from links", value: "select count(*) from links" },
+    {
+      label: "invalid=1 و unsupported=0 (50)",
+      value:
+        "select url,config_json,is_invalid,is_protocol_unsupported from links where is_invalid=1 and is_protocol_unsupported=0 limit 50",
+    },
+    { label: "select * from links where url='%%'", value: "select * from links where url='%%'" },
+    { label: "delete from links", value: "delete from links" },
+  ];
+
+  function ensurePresets() {
+    if (!sqlPresets) return;
+    sqlPresets.innerHTML = "";
+    PRESET_QUERIES.forEach((p) => {
+      const opt = document.createElement("option");
+      opt.value = p.value;
+      opt.textContent = p.label;
+      sqlPresets.appendChild(opt);
     });
-    html += '</tr></thead><tbody>';
-    if (rows.length === 0) {
-        html += '<tr><td colspan="' + cols.length + '" class="muted">داده‌ای وجود ندارد.</td></tr>';
+  }
+
+  if (sqlPresets && sqlInput) {
+    ensurePresets();
+    sqlPresets.addEventListener("change", () => {
+      const v = sqlPresets.value || "";
+      if (v) sqlInput.value = v;
+    });
+  }
+
+  // -------- SQL Query --------
+  function renderSqlTable(data) {
+    if (!sqlResult) return;
+
+    const cols = Array.isArray(data.columns) ? data.columns : [];
+    const rows = Array.isArray(data.rows) ? data.rows : [];
+
+    if (!cols.length) {
+      safeHtml(
+        sqlResult,
+        `<div class="muted">کوئری بدون نتیجهٔ جدولی اجرا شد. (rowcount=${escapeHtml(
+          data.rowcount ?? ""
+        )})</div>`
+      );
+      return;
+    }
+
+    let html = `<table class="db-table"><thead><tr>`;
+    for (const c of cols) html += `<th>${escapeHtml(c)}</th>`;
+    html += `</tr></thead><tbody>`;
+
+    if (!rows.length) {
+      html += `<tr><td colspan="${cols.length}" class="muted">داده‌ای وجود ندارد.</td></tr>`;
     } else {
-        rows.forEach(row => {
-            html += '<tr>';
-            cols.forEach(c => {
-                let v = row[c];
-                if (v === null || v === undefined) v = "";
-                html += `<td>${escapeHtml(String(v))}</td>`;
-            });
-            html += '</tr>';
-        });
+      for (const row of rows) {
+        html += `<tr>`;
+        for (const c of cols) {
+          let v = row[c];
+          if (v === null || v === undefined) v = "";
+          html += `<td>${escapeHtml(String(v))}</td>`;
+        }
+        html += `</tr>`;
+      }
     }
-    html += '</tbody></table>';
-    container.innerHTML = html;
-}
 
-function escapeHtml(str) {
-    return str
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;");
-}
+    html += `</tbody></table>`;
+    safeHtml(sqlResult, html);
+  }
 
-async function runQuery() {
-    if (!sqlInput || !sqlResult || !sqlStatus) return;
-    const q = sqlInput.value;
-    sqlStatus.textContent = "";
-    sqlResult.innerHTML = '<div class="muted">...</div>';
+  let sqlInFlight = false;
+
+  async function runQuery() {
+    if (!sqlInput || !sqlStatus || !sqlResult) return;
+    if (sqlInFlight) return;
+    sqlInFlight = true;
+
+    const q = sqlInput.value || "";
+    safeText(sqlStatus, "");
+    safeHtml(sqlResult, `<div class="muted">...</div>`);
+
     if (!q.trim()) {
-        sqlStatus.textContent = "کوئری خالی است.";
-        return;
+      safeText(sqlStatus, "کوئری خالی است.");
+      safeHtml(sqlResult, `<div class="muted">نتیجه‌ای برای نمایش نیست.</div>`);
+      sqlInFlight = false;
+      return;
+    }
+
+    try {
+      const data = await fetchJson(
+        "/db/query",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ query: q, params: [] }),
+        },
+        15000
+      );
+
+      renderSqlTable(data);
+
+      if (Array.isArray(data.columns) && data.columns.length) {
+        safeText(sqlStatus, `نتیجه: ${Array.isArray(data.rows) ? data.rows.length : 0} ردیف`);
+      } else {
+        safeText(sqlStatus, `rowcount: ${data.rowcount ?? 0}`);
+      }
+    } catch (e) {
+      console.error(e);
+      const msg = e && e.name === "AbortError" ? "Timeout" : (e?.message || e);
+      safeText(sqlStatus, "خطا در اجرای کوئری: " + msg);
+      safeHtml(sqlResult, `<div class="muted">خطا در اجرای کوئری.</div>`);
+    } finally {
+      sqlInFlight = false;
+    }
+  }
+
+  if (sqlRunBtn) sqlRunBtn.addEventListener("click", runQuery);
+  if (sqlInput) {
+    sqlInput.addEventListener("keydown", (ev) => {
+      if (ev.key === "Enter" && (ev.ctrlKey || ev.metaKey)) runQuery();
+    });
+  }
+
+  // -------- Shared Log (فقط یک منبع) --------
+  let logOffset = 0;
+  let lastLogTrimAt = Date.now();
+  let logLines = [];
+  let logInFlight = false;
+
+  function pushLogLines(lines) {
+    if (!Array.isArray(lines) || !lines.length) return;
+
+    for (const ln of lines) {
+      const t = String(ln ?? "").trimEnd();
+      if (t) logLines.push(t);
+    }
+
+    if (logLines.length > 20) logLines = logLines.slice(-20);
+
+    if (Date.now() - lastLogTrimAt >= 10000) {
+      if (logLines.length > 20) logLines = logLines.slice(-20);
+      lastLogTrimAt = Date.now();
+    }
+
+    if (collectorLogEl) {
+      collectorLogEl.textContent = logLines.join("\n") || "(هنوز لاگی ثبت نشده است)";
+      // اتو اسکرول مطمئن‌تر (بعد از رندر)
+      requestAnimationFrame(() => {
+        collectorLogEl.scrollTop = collectorLogEl.scrollHeight;
+      });
+    }
+  }
+
+  async function pollLogOnce() {
+    if (logInFlight) return;
+    logInFlight = true;
+
+    try {
+      const data = await fetchJson(`/collector/log?offset=${logOffset}`, {}, 6000);
+
+      const lines = data.lines || [];
+      pushLogLines(lines);
+
+      // اگر سرور آفست را ریست کرده باشد، ما هم آفست را با total همگام می‌کنیم
+      if (typeof data.total === "number") {
+        logOffset = data.total;
+      } else {
+        logOffset += Array.isArray(lines) ? lines.length : 0;
+      }
+    } catch (e) {
+      // هیچ چیزی را قفل نکن؛ فقط رها کن تا راند بعدی ادامه بدهد
+      // (AbortError هم اینجا می‌آید)
+    } finally {
+      logInFlight = false;
+    }
+  }
+
+  function clearLogClientSide() {
+    logOffset = 0;
+    logLines = [];
+    if (collectorLogEl) collectorLogEl.textContent = "";
+  }
+
+  // -------- Jobs Summary (یک درخواست برای همه statusها) --------
+  function renderStats(el, statsObj) {
+    if (!el) return;
+    if (!statsObj) {
+      el.textContent = "";
+      return;
     }
     try {
-        const res = await fetch("/db/query", {
-            method: "POST",
-            headers: {"Content-Type": "application/json"},
-            body: JSON.stringify({query: q, params: []})
-        });
-        if (!res.ok) {
-            const text = await res.text();
-            throw new Error(text || ("HTTP " + res.status));
-        }
-        const data = await res.json();
-        if (data.columns && data.columns.length > 0) {
-            renderTable(data, sqlResult);
-            sqlStatus.textContent = `نتیجه: ${data.rows.length} ردیف`;
-        } else {
-            sqlResult.innerHTML = '<div class="muted">کوئری بدون نتیجهٔ جدولی اجرا شد.</div>';
-            sqlStatus.textContent = `rowcount: ${data.rowcount}`;
-        }
-    } catch (err) {
-        console.error(err);
-        sqlStatus.textContent = "خطا در اجرای کوئری: " + err;
-        sqlResult.innerHTML = '<div class="muted">خطا در اجرای کوئری.</div>';
+      el.textContent = JSON.stringify(statsObj, null, 2);
+    } catch {
+      el.textContent = String(statsObj);
     }
-}
+  }
 
-function applyPresetQuery() {
-    if (!sqlPresets || !sqlInput) return;
-    const q = sqlPresets.value;
-    if (!q) return;
-    sqlInput.value = q;
-    runQuery();
-}
+  function applyJobState(key, st) {
+    const running = !!st?.running;
 
-// ---- خلاصهٔ Jobها + لاگ (endpoint /jobs/summary) ----
+    if (key === "collector") {
+      safeText(collectorStatusEl, running ? "running" : "idle");
+      renderStats(collectorStatsEl, st?.stats || null);
+      setButtons(collectorRunBtn, collectorStopBtn, running);
+      return;
+    }
 
-async function refreshJobsSummary() {
+    if (key === "importer") {
+      safeText(importerStatusEl, running ? "running" : "idle");
+      renderStats(importerStatsEl, st?.stats || null);
+      setButtons(importerRunBtn, importerStopBtn, running);
+      return;
+    }
+
+    if (key === "json") {
+      safeText(jsonStatusEl, running ? "running" : "idle");
+      renderStats(jsonStatsEl, st?.stats || null);
+      setButtons(jsonRunBtn, jsonStopBtn, running);
+      return;
+    }
+
+    if (key === "json_repair") {
+      if (!jsonRepairStatusEl) return;
+      safeText(jsonRepairStatusEl, running ? "running" : "idle");
+      renderStats(jsonRepairStatsEl, st?.stats || null);
+      setButtons(jsonRepairRunBtn, jsonRepairStopBtn, running);
+      return;
+    }
+
+    if (key === "hash") {
+      safeText(hashStatusEl, running ? "running" : "idle");
+      renderStats(hashStatsEl, st?.stats || null);
+      setButtons(hashRunBtn, hashStopBtn, running);
+      return;
+    }
+
+    if (key === "group") {
+      safeText(groupStatusEl, running ? "running" : "idle");
+      renderStats(groupStatsEl, st?.stats || null);
+      setButtons(groupRunBtn, groupStopBtn, running);
+      return;
+    }
+
+    if (key === "compress") {
+      safeText(compressStatusEl, running ? "running" : "idle");
+      renderStats(compressStatsEl, st?.stats || null);
+      if (compressRunBtn) compressRunBtn.disabled = running;
+      return;
+    }
+  }
+
+  function setUnknownStatesToSafeDefaults() {
+    setButtons(collectorRunBtn, collectorStopBtn, false);
+    setButtons(importerRunBtn, importerStopBtn, false);
+    setButtons(jsonRunBtn, jsonStopBtn, false);
+    if (jsonRepairStatusEl) setButtons(jsonRepairRunBtn, jsonRepairStopBtn, false);
+    setButtons(hashRunBtn, hashStopBtn, false);
+    setButtons(groupRunBtn, groupStopBtn, false);
+    if (compressRunBtn) compressRunBtn.disabled = false;
+  }
+
+  let summaryInFlight = false;
+
+  async function refreshSummaryOnce() {
+    if (summaryInFlight) return;
+    summaryInFlight = true;
+
     try {
-        const res = await fetch("/jobs/summary");
-        if (!res.ok) throw new Error("HTTP " + res.status);
-        const data = await res.json();
+      const data = await fetchJson("/jobs/summary", {}, 8000);
 
-        // db_path
-        if (dbPathEl && data.db_path) dbPathEl.textContent = data.db_path;
-        if (footerDbPathEl && data.db_path) footerDbPathEl.textContent = data.db_path;
+      const dbp = data.db_path || "unknown";
+      if (dbPathEl) dbPathEl.textContent = dbp;
+      if (footerDbPathEl) footerDbPathEl.textContent = dbp;
 
-        const jobs = data.jobs || {};
+      const jobs = data.jobs || {};
+      applyJobState("collector", jobs.collector);
+      applyJobState("importer", jobs.importer);
+      applyJobState("json", jobs.json);
+      applyJobState("json_repair", jobs.json_repair);
+      applyJobState("hash", jobs.hash);
+      applyJobState("group", jobs.group);
+      applyJobState("compress", jobs.compress);
+    } catch (e) {
+      console.error(e);
+      setUnknownStatesToSafeDefaults();
+    } finally {
+      summaryInFlight = false;
+    }
+  }
 
-        // --- collector ---
-        const collector = jobs.collector || {};
-        collectorRunning = !!collector.running;
-        const collectorLabel = collectorRunning ? "در حال اجرا" : "متوقف";
-        const collectorClass = collectorRunning ? "pill" : "pill gray";
-        if (collectorStatusEl) {
-            collectorStatusEl.innerHTML =
-                `<span class="${collectorClass}"><span class="dot"></span><span>${collectorLabel}</span></span>`;
+  // -------- Job actions --------
+  async function postJson(url) {
+    const data = await fetchJson(url, { method: "POST" }, 8000);
+    return data;
+  }
+
+  function bindJobButtons(runBtn, stopBtn, runUrl, stopUrl) {
+    if (runBtn) {
+      runBtn.addEventListener("click", async () => {
+        try {
+          await postJson(runUrl);
+        } catch (e) {
+          console.error(e);
+        } finally {
+          clearLogClientSide();
+          await refreshSummaryOnce();
+          // لاگ را سریع شروع کن
+          pollLogOnce();
         }
-        if (collectorRunBtn) collectorRunBtn.disabled = collectorRunning;
-        if (collectorStopBtn) collectorStopBtn.disabled = !collectorRunning;
+      });
+    }
 
-        if (collectorStatsEl) {
-            const s = collector.stats && collector.stats.collector_stats;
-            if (s) {
-                collectorStatsEl.textContent =
-                    `سورس‌ها: ${s.total_sources || 0} | موفق: ${s.successful_sources || 0} | خراب: ${s.failed_sources || 0} | کانفیگ جمع‌شده: ${s.total_configs || 0}`;
-            } else {
-                collectorStatsEl.textContent = "";
-            }
+    if (stopBtn) {
+      stopBtn.addEventListener("click", async () => {
+        try {
+          await postJson(stopUrl);
+        } catch (e) {
+          console.error(e);
+        } finally {
+          await refreshSummaryOnce();
+          pollLogOnce();
         }
+      });
+    }
+  }
 
-        // --- importer ---
-        const importer = jobs.importer || {};
-        importerRunning = !!importer.running;
-        const importerLabel = importerRunning ? "در حال اجرا" : "متوقف";
-        const importerClass = importerRunning ? "pill" : "pill gray";
-        if (importerStatusEl) {
-            importerStatusEl.innerHTML =
-                `<span class="${importerClass}"><span class="dot"></span><span>${importerLabel}</span></span>`;
-        }
-        if (importerRunBtn) importerRunBtn.disabled = importerRunning;
-        if (importerStopBtn) importerStopBtn.disabled = !importerRunning;
+  bindJobButtons(collectorRunBtn, collectorStopBtn, "/collector/run", "/collector/stop");
+  bindJobButtons(importerRunBtn, importerStopBtn, "/importer/run", "/importer/stop");
+  bindJobButtons(jsonRunBtn, jsonStopBtn, "/json/run", "/json/stop");
+  if (jsonRepairStatusEl) {
+    bindJobButtons(jsonRepairRunBtn, jsonRepairStopBtn, "/json_repair/run", "/json_repair/stop");
+  }
+  bindJobButtons(hashRunBtn, hashStopBtn, "/hash/run", "/hash/stop");
+  bindJobButtons(groupRunBtn, groupStopBtn, "/group/run", "/group/stop");
 
-        if (importerStatsEl) {
-            const s = importer.stats && importer.stats.importer_stats;
-            if (s) {
-                importerStatsEl.textContent =
-                    `خطوط: ${s.total_lines || 0} | کانفیگ معتبر: ${s.valid_configs || 0} | جدید درج‌شده: ${s.inserted || 0} | batchها: ${s.batches_committed || 0}`;
-            } else {
-                importerStatsEl.textContent = "";
-            }
-        }
+  if (compressRunBtn) {
+    compressRunBtn.addEventListener("click", async () => {
+      try {
+        await postJson("/compress/run");
+      } catch (e) {
+        console.error(e);
+      } finally {
+        clearLogClientSide();
+        await refreshSummaryOnce();
+        pollLogOnce();
+      }
+    });
+  }
 
-        // --- json updater ---
-        const jsonJob = jobs.json || {};
-        jsonRunning = !!jsonJob.running;
-        const jsonLabel = jsonRunning ? "در حال اجرا" : "متوقف";
-        const jsonClass = jsonRunning ? "pill" : "pill gray";
-        if (jsonStatusEl) {
-            jsonStatusEl.innerHTML =
-                `<span class="${jsonClass}"><span class="dot"></span><span>${jsonLabel}</span></span>`;
-        }
-        if (jsonRunBtn) jsonRunBtn.disabled = jsonRunning;
-        if (jsonStopBtn) jsonStopBtn.disabled = !jsonRunning;
+  // -------- Loop --------
+  // Summary هر 2 ثانیه
+  // Log هر 1 ثانیه (و هر درخواست timeout دارد تا “استاپ شدن” اتفاق نیفتد)
+  function startLoops() {
+    refreshSummaryOnce();
+    pollLogOnce();
 
-        if (jsonStatsEl) {
-            const s = jsonJob.stats && jsonJob.stats.json_stats;
-            if (s) {
-                jsonStatsEl.textContent =
-                    `کاندید: ${s.total_candidates || 0} | batchها: ${s.batches || 0} | URLها: ${s.urls_seen || 0} | موفق: ${s.urls_converted || 0} | خراب: ${s.urls_failed || 0} | ردیف آپدیت‌شده: ${s.rows_updated || 0}`;
-            } else {
-                jsonStatsEl.textContent = "";
-            }
-        }
+    setInterval(() => {
+      refreshSummaryOnce();
+    }, 2000);
 
-        // --- hash updater ---
-        const hashJob = jobs.hash || {};
-        hashRunning = !!hashJob.running;
-        const hashLabel = hashRunning ? "در حال اجرا" : "متوقف";
-        const hashClass = hashRunning ? "pill" : "pill gray";
-        if (hashStatusEl) {
-            hashStatusEl.innerHTML =
-                `<span class="${hashClass}"><span class="dot"></span><span>${hashLabel}</span></span>`;
-        }
-        if (hashRunBtn) hashRunBtn.disabled = hashRunning;
-        if (hashStopBtn) hashStopBtn.disabled = !hashRunning;
-
-        if (hashStatsEl) {
-            const s = hashJob.stats && hashJob.stats.hash_stats;
-            if (s) {
-                hashStatsEl.textContent =
-                    `کاندید: ${s.total_candidates || 0} | batchها: ${s.batches || 0} | پردازش‌شده: ${s.rows_processed || 0} | هش‌شده: ${s.rows_hashed || 0} | ردشده (non-vmess): ${s.rows_skipped_non_vmess || 0} | JSON خراب: ${s.json_decode_errors || 0} | خطای هویت: ${s.identity_errors || 0} | invalid شده: ${s.marked_invalid || 0}`;
-            } else {
-                hashStatsEl.textContent = "";
-            }
-        }
-
-        // --- compress (backup) ---
-        const compressJob = jobs.compress || {};
-        compressRunning = !!compressJob.running;
-        const compressLabel = compressRunning ? "در حال اجرا" : "متوقف";
-        const compressClass = compressRunning ? "pill" : "pill gray";
-        if (compressStatusEl) {
-            compressStatusEl.innerHTML =
-                `<span class="${compressClass}"><span class="dot"></span><span>${compressLabel}</span></span>`;
-        }
-        if (compressRunBtn) compressRunBtn.disabled = compressRunning;
-
-        if (compressStatsEl) {
-            const s = compressJob.stats && compressJob.stats.compress_stats;
-            if (s && s.output_file) {
-                compressStatsEl.textContent = `فایل خروجی: ${s.output_file}`;
-            } else {
-                compressStatsEl.textContent = "";
-            }
-        }
-
-        // --- لاگ مشترک jobها (فقط آخرین حداکثر ۵۰ خط) ---
+    setInterval(() => {
+      // trim 10 ثانیه‌ای حتی اگر لاگ جدید نیاید هم enforce شود
+      if (Date.now() - lastLogTrimAt >= 10000) {
+        if (logLines.length > 20) logLines = logLines.slice(-20);
+        lastLogTrimAt = Date.now();
         if (collectorLogEl) {
-            const log = data.log || {};
-            const lines = log.lines || [];
-            if (lines.length === 0) {
-                collectorLogEl.textContent = "(هنوز لاگی ثبت نشده است)";
-            } else {
-                collectorLogEl.textContent = lines.join("\n");
-                collectorLogEl.scrollTop = collectorLogEl.scrollHeight;
-            }
+          collectorLogEl.textContent = logLines.join("\n") || "(هنوز لاگی ثبت نشده است)";
+          requestAnimationFrame(() => {
+            collectorLogEl.scrollTop = collectorLogEl.scrollHeight;
+          });
         }
+      }
+      pollLogOnce();
+    }, 1000);
+  }
 
-    } catch (err) {
-        console.error("refreshJobsSummary error", err);
-    }
-}
-
-// ---- Collector controls ----
-
-async function startCollector() {
-    try {
-        if (collectorRunBtn) collectorRunBtn.disabled = true;
-        if (collectorStopBtn) collectorStopBtn.disabled = false;
-        if (collectorLogEl) collectorLogEl.textContent = "";
-        const res = await fetch("/collector/run", {method: "POST"});
-        if (!res.ok) {
-            const text = await res.text();
-            throw new Error(text || ("HTTP " + res.status));
-        }
-        if (collectorStatusEl) {
-            collectorStatusEl.innerHTML =
-                '<span class="pill"><span class="dot"></span><span>در حال اجرا...</span></span>';
-        }
-        collectorRunning = true;
-        refreshJobsSummary();
-    } catch (err) {
-        console.error(err);
-        if (collectorRunBtn) collectorRunBtn.disabled = false;
-        if (collectorStopBtn) collectorStopBtn.disabled = true;
-        if (collectorStatusEl) {
-            collectorStatusEl.innerHTML =
-                '<span class="pill red"><span class="dot"></span><span>خطا در شروع کالکتور</span></span>';
-        }
-    }
-}
-
-async function stopCollector() {
-    try {
-        if (collectorStopBtn) collectorStopBtn.disabled = true;
-        const res = await fetch("/collector/stop", {method: "POST"});
-        if (!res.ok) {
-            const text = await res.text();
-            throw new Error(text || ("HTTP " + res.status));
-        }
-        if (collectorStatusEl) {
-            collectorStatusEl.innerHTML =
-                '<span class="pill red"><span class="dot"></span><span>در حال توقف...</span></span>';
-        }
-        refreshJobsSummary();
-    } catch (err) {
-        console.error(err);
-        if (collectorStatusEl) {
-            collectorStatusEl.innerHTML =
-                '<span class="pill red"><span class="dot"></span><span>خطا در توقف کالکتور</span></span>';
-        }
-    }
-}
-
-// ---- Importer controls ----
-
-async function startImporter() {
-    try {
-        if (importerRunBtn) importerRunBtn.disabled = true;
-        if (importerStopBtn) importerStopBtn.disabled = false;
-        if (collectorLogEl) collectorLogEl.textContent = "";
-        const res = await fetch("/importer/run", {method: "POST"});
-        if (!res.ok) {
-            const text = await res.text();
-            throw new Error(text || ("HTTP " + res.status));
-        }
-        if (importerStatusEl) {
-            importerStatusEl.innerHTML =
-                '<span class="pill"><span class="dot"></span><span>در حال اجرا...</span></span>';
-        }
-        importerRunning = true;
-        refreshJobsSummary();
-    } catch (err) {
-        console.error(err);
-        if (importerRunBtn) importerRunBtn.disabled = false;
-        if (importerStopBtn) importerStopBtn.disabled = true;
-        if (importerStatusEl) {
-            importerStatusEl.innerHTML =
-                '<span class="pill red"><span class="dot"></span><span>خطا در شروع ایمپورتر</span></span>';
-        }
-    }
-}
-
-async function stopImporter() {
-    try {
-        if (importerStopBtn) importerStopBtn.disabled = true;
-        const res = await fetch("/importer/stop", {method: "POST"});
-        if (!res.ok) {
-            const text = await res.text();
-            throw new Error(text || ("HTTP " + res.status));
-        }
-        if (importerStatusEl) {
-            importerStatusEl.innerHTML =
-                '<span class="pill red"><span class="dot"></span><span>در حال توقف ایمپورتر</span></span>';
-        }
-        refreshJobsSummary();
-    } catch (err) {
-        console.error(err);
-        if (importerStatusEl) {
-            importerStatusEl.innerHTML =
-                '<span class="pill red"><span class="dot"></span><span>خطا در توقف ایمپورتر</span></span>';
-        }
-    }
-}
-
-// ---- JSON updater controls ----
-
-async function startJson() {
-    try {
-        if (jsonRunBtn) jsonRunBtn.disabled = true;
-        if (jsonStopBtn) jsonStopBtn.disabled = false;
-        if (collectorLogEl) collectorLogEl.textContent = "";
-        const res = await fetch("/json/run", {method: "POST"});
-        if (!res.ok) {
-            const text = await res.text();
-            throw new Error(text || ("HTTP " + res.status));
-        }
-        if (jsonStatusEl) {
-            jsonStatusEl.innerHTML =
-                '<span class="pill"><span class="dot"></span><span>در حال اجرا...</span></span>';
-        }
-        jsonRunning = true;
-        refreshJobsSummary();
-    } catch (err) {
-        console.error(err);
-        if (jsonRunBtn) jsonRunBtn.disabled = false;
-        if (jsonStopBtn) jsonStopBtn.disabled = true;
-        if (jsonStatusEl) {
-            jsonStatusEl.innerHTML =
-                '<span class="pill red"><span class="dot"></span><span>خطا در شروع JSON updater</span></span>';
-        }
-    }
-}
-
-async function stopJson() {
-    try {
-        if (jsonStopBtn) jsonStopBtn.disabled = true;
-        const res = await fetch("/json/stop", {method: "POST"});
-        if (!res.ok) {
-            const text = await res.text();
-            throw new Error(text || ("HTTP " + res.status));
-        }
-        if (jsonStatusEl) {
-            jsonStatusEl.innerHTML =
-                '<span class="pill red"><span class="dot"></span><span>در حال توقف JSON updater</span></span>';
-        }
-        refreshJobsSummary();
-    } catch (err) {
-        console.error(err);
-        if (jsonStatusEl) {
-            jsonStatusEl.innerHTML =
-                '<span class="pill red"><span class="dot"></span><span>خطا در توقف JSON updater</span></span>';
-        }
-    }
-}
-
-// ---- Hash updater controls ----
-
-async function startHash() {
-    try {
-        if (hashRunBtn) hashRunBtn.disabled = true;
-        if (hashStopBtn) hashStopBtn.disabled = false;
-        if (collectorLogEl) collectorLogEl.textContent = "";
-        const res = await fetch("/hash/run", {method: "POST"});
-        if (!res.ok) {
-            const text = await res.text();
-            throw new Error(text || ("HTTP " + res.status));
-        }
-        if (hashStatusEl) {
-            hashStatusEl.innerHTML =
-                '<span class="pill"><span class="dot"></span><span>در حال اجرا...</span></span>';
-        }
-        hashRunning = true;
-        refreshJobsSummary();
-    } catch (err) {
-        console.error(err);
-        if (hashRunBtn) hashRunBtn.disabled = false;
-        if (hashStopBtn) hashStopBtn.disabled = true;
-        if (hashStatusEl) {
-            hashStatusEl.innerHTML =
-                '<span class="pill red"><span class="dot"></span><span>خطا در شروع Hash updater</span></span>';
-        }
-    }
-}
-
-async function stopHash() {
-    try {
-        if (hashStopBtn) hashStopBtn.disabled = true;
-        const res = await fetch("/hash/stop", {method: "POST"});
-        if (!res.ok) {
-            const text = await res.text();
-            throw new Error(text || ("HTTP " + res.status));
-        }
-        if (hashStatusEl) {
-            hashStatusEl.innerHTML =
-                '<span class="pill red"><span class="dot"></span><span>در حال توقف Hash updater</span></span>';
-        }
-        refreshJobsSummary();
-    } catch (err) {
-        console.error(err);
-        if (hashStatusEl) {
-            hashStatusEl.innerHTML =
-                '<span class="pill red"><span class="dot"></span><span>خطا در توقف Hash updater</span></span>';
-        }
-    }
-}
-
-// ---- Compress (DB backup) controls ----
-
-async function startCompress() {
-    try {
-        if (compressRunBtn) compressRunBtn.disabled = true;
-        if (collectorLogEl) collectorLogEl.textContent = "";
-        const res = await fetch("/compress/run", {method: "POST"});
-        if (!res.ok) {
-            const text = await res.text();
-            throw new Error(text || ("HTTP " + res.status));
-        }
-        if (compressStatusEl) {
-            compressStatusEl.innerHTML =
-                '<span class="pill"><span class="dot"></span><span>در حال اجرا...</span></span>';
-        }
-        compressRunning = true;
-        refreshJobsSummary();
-    } catch (err) {
-        console.error(err);
-        if (compressRunBtn) compressRunBtn.disabled = false;
-        if (compressStatusEl) {
-            compressStatusEl.innerHTML =
-                '<span class="pill red"><span class="dot"></span><span>خطا در شروع بکاپ</span></span>';
-        }
-    }
-}
-
-// ---- onload ----
-
-window.addEventListener("load", () => {
-    refreshHealth();
-    refreshJobsSummary();
-    // هر ۳ ثانیه یک snapshot از وضعیت jobها + لاگ
-    setInterval(refreshJobsSummary, 3000);
-});
+  // init
+  switchTab("jobs");
+  setUnknownStatesToSafeDefaults();
+  startLoops();
+})();

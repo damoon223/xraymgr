@@ -7,6 +7,7 @@ from .settings import get_db_path
 def _table_columns(conn: sqlite3.Connection, table: str) -> List[str]:
     cur = conn.cursor()
     cur.execute(f"PRAGMA table_info({table})")
+    # (cid, name, type, notnull, dflt, pk)
     return [str(r[1]) for r in cur.fetchall()]
 
 
@@ -15,9 +16,10 @@ def init_db_schema() -> None:
     ساخت/تأیید اسکیمای دیتابیس (SQLite).
 
     نکته مهم:
-      - CREATE TABLE IF NOT EXISTS اسکیمای DBهای قدیمی را تغییر نمی‌دهد.
-      - برای پایدار شدن jobها روی DBهای قدیمی‌تر، این تابع تلاش می‌کند بعضی ستون‌های لازم
-        (مثل is_invalid / is_protocol_unsupported / parent_id) را اگر نبودند، با ALTER TABLE اضافه کند.
+    - CREATE TABLE IF NOT EXISTS اسکیمای DBهای قدیمی را تغییر نمی‌دهد.
+    - برای پایدار شدن jobها روی DBهای قدیمی‌تر، این تابع تلاش می‌کند بعضی ستون‌های لازم
+      (مثل is_invalid / is_protocol_unsupported / parent_id / repaired_url) را اگر نبودند،
+      با ALTER TABLE اضافه کند.
     """
     db_path = get_db_path()
     conn = sqlite3.connect(db_path)
@@ -58,16 +60,19 @@ def init_db_schema() -> None:
 
                 parent_id INTEGER,
                 is_invalid INTEGER NOT NULL DEFAULT 0,
-                is_protocol_unsupported INTEGER NOT NULL DEFAULT 0
+                is_protocol_unsupported INTEGER NOT NULL DEFAULT 0,
+                repaired_url TEXT
             )
             """
         )
 
         cols = set(_table_columns(conn, "links"))
+
         wanted: Dict[str, str] = {
             "parent_id": "ALTER TABLE links ADD COLUMN parent_id INTEGER",
             "is_invalid": "ALTER TABLE links ADD COLUMN is_invalid INTEGER NOT NULL DEFAULT 0",
             "is_protocol_unsupported": "ALTER TABLE links ADD COLUMN is_protocol_unsupported INTEGER NOT NULL DEFAULT 0",
+            "repaired_url": "ALTER TABLE links ADD COLUMN repaired_url TEXT",
         }
 
         for name, stmt in wanted.items():

@@ -1,82 +1,70 @@
+from __future__ import annotations
+
 import contextlib
 import os
 import sqlite3
 import sys
 import threading
 import time
-from collections import deque
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.responses import HTMLResponse, JSONResponse
-from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
+from starlette.staticfiles import StaticFiles
 
+from .settings import get_db_path
 from .collector import SubscriptionCollector
-from .compress_db import main as compress_db_main
-from .hash_updater import ConfigHashUpdater
 from .importer import RawConfigImporter
 from .json_updater import JsonConfigUpdater
-from .settings import get_db_path
+from .hash_updater import ConfigHashUpdater
+from .group_updater import ConfigGroupUpdater
+
+# json_repair ممکن است در بعضی نسخه‌ها وجود داشته باشد
+try:
+    from .json_repair_updater import JsonRepairUpdater  # type: ignore
+except Exception:  # pragma: no cover
+    JsonRepairUpdater = None  # type: ignore
+
+# compress ممکن است به شکل ماژول/اسکریپت وجود داشته باشد
+try:
+    from .compress_db import compress_db as compress_db_func  # type: ignore
+except Exception:  # pragma: no cover
+    compress_db_func = None  # type: ignore
+
 
 app = FastAPI(title="XrayMgr Web Dashboard")
 
 BASE_DIR = Path(__file__).resolve().parent
+INDEX_HTML_PATH = BASE_DIR / "web_static" / "index.html"
 STATIC_DIR = BASE_DIR / "web_static"
-app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
-_schema_lock = threading.Lock()
-_schema_initialized = False
+MAX_LOG_LINES = 5000
 
 
-def _ensure_schema() -> None:
-    global _schema_initialized
-    if _schema_initialized:
-        return
-    with _schema_lock:
-        if _schema_initialized:
-            return
-        from .schema import init_db_schema
+class NoCacheStaticFiles(StaticFiles):
+    async def get_response(self, path: str, scope):
+        resp = await super().get_response(path, scope)
+        # جلوگیری از کش شدن JS/CSS تا مجبور به Ctrl+F5 نباشید
+        if resp.status_code == 200:
+            resp.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+            resp.headers["Pragma"] = "no-cache"
+            resp.headers["Expires"] = "0"
+        return resp
 
-        init_db_schema()
-        _schema_initialized = True
+
+app.mount("/static", NoCacheStaticFiles(directory=STATIC_DIR), name="static")
+
+
+# ----------------- DB helpers -----------------
 
 
 def get_connection() -> sqlite3.Connection:
-    _ensure_schema()
     db_path = get_db_path()
     conn = sqlite3.connect(db_path)
     conn.row_factory = sqlite3.Row
     return conn
-
-
-def list_tables() -> List[str]:
-    conn = get_connection()
-    try:
-        cur = conn.cursor()
-        cur.execute(
-            "SELECT name FROM sqlite_master "
-            "WHERE type='table' AND name NOT LIKE 'sqlite_%' "
-            "ORDER BY name"
-        )
-        rows = cur.fetchall()
-        return [r["name"] for r in rows]
-    finally:
-        conn.close()
-
-
-def fetch_table(name: str, limit: int = 100) -> Dict[str, Any]:
-    conn = get_connection()
-    try:
-        cur = conn.cursor()
-        cur.execute(f"SELECT * FROM {name} LIMIT ?", (limit,))
-        rows = cur.fetchall()
-        columns = [d[0] for d in cur.description] if cur.description else []
-        data = [dict(zip(columns, row)) for row in rows]
-        return {"columns": columns, "rows": data}
-    finally:
-        conn.close()
 
 
 def run_query(query: str, params: Optional[List[Any]] = None) -> Dict[str, Any]:
@@ -97,26 +85,32 @@ def run_query(query: str, params: Optional[List[Any]] = None) -> Dict[str, Any]:
             data_rows = []
 
         conn.commit()
-        return {"columns": columns, "rows": data_rows, "rowcount": cur.rowcount}
+
+        return {
+            "columns": columns,
+            "rows": data_rows,
+            "rowcount": cur.rowcount,
+        }
     finally:
         conn.close()
 
 
-collector_lock = threading.Lock()
+# ----------------- Background jobs state -----------------
 
-MAX_LOG_LINES = 50
-job_log_buffer: "deque[str]" = deque(maxlen=MAX_LOG_LINES)
+
+jobs_lock = threading.Lock()
 
 collector_state: Dict[str, Any] = {
+    "name": "collector",
     "running": False,
     "last_started_at": None,
     "last_finished_at": None,
     "stats": None,
-    "log": job_log_buffer,
     "instance": None,
 }
 
 importer_state: Dict[str, Any] = {
+    "name": "importer",
     "running": False,
     "last_started_at": None,
     "last_finished_at": None,
@@ -125,6 +119,7 @@ importer_state: Dict[str, Any] = {
 }
 
 json_state: Dict[str, Any] = {
+    "name": "json",
     "running": False,
     "last_started_at": None,
     "last_finished_at": None,
@@ -133,6 +128,25 @@ json_state: Dict[str, Any] = {
 }
 
 hash_state: Dict[str, Any] = {
+    "name": "hash",
+    "running": False,
+    "last_started_at": None,
+    "last_finished_at": None,
+    "stats": None,
+    "instance": None,
+}
+
+group_state: Dict[str, Any] = {
+    "name": "group",
+    "running": False,
+    "last_started_at": None,
+    "last_finished_at": None,
+    "stats": None,
+    "instance": None,
+}
+
+json_repair_state: Dict[str, Any] = {
+    "name": "json_repair",
     "running": False,
     "last_started_at": None,
     "last_finished_at": None,
@@ -141,6 +155,7 @@ hash_state: Dict[str, Any] = {
 }
 
 compress_state: Dict[str, Any] = {
+    "name": "compress",
     "running": False,
     "last_started_at": None,
     "last_finished_at": None,
@@ -148,195 +163,221 @@ compress_state: Dict[str, Any] = {
     "instance": None,
 }
 
+# یک لاگ مشترک برای همه jobها (پنل فقط از یک endpoint لاگ می‌گیرد)
+shared_log: List[str] = []
 
-class CollectorLogStream:
+
+class SharedLogStream:
+    """
+    stream برای جمع‌کردن خروجی print به شکل خط‌به‌خط.
+    مشکل پشت‌سرهم شدن لاگ‌ها معمولاً از این است که write() تکه‌تکه صدا می‌خورد.
+    این کلاس بافر می‌کند تا فقط خط کامل را append کند.
+    """
+
+    def __init__(self) -> None:
+        self._buf = ""
+
     def write(self, s: str) -> int:
-        if not s:
+        if s is None:
             return 0
+        text = str(s)
+        # روی کنسول واقعی هم چاپ کن
+        try:
+            sys.__stdout__.write(text)
+        except Exception:
+            pass
 
-        sys.__stdout__.write(s)
+        self._buf += text
+        lines = self._buf.split("\n")
+        self._buf = lines[-1]  # تکهٔ ناقص آخر
 
-        lines = s.splitlines()
-        with collector_lock:
-            for line in lines:
-                if line.strip():
-                    job_log_buffer.append(line)
-
-        return len(s)
+        to_add = [ln.rstrip("\r") for ln in lines[:-1]]
+        if to_add:
+            with jobs_lock:
+                for ln in to_add:
+                    if ln.strip():
+                        shared_log.append(ln)
+                if len(shared_log) > MAX_LOG_LINES:
+                    del shared_log[: len(shared_log) - MAX_LOG_LINES]
+        return len(text)
 
     def flush(self) -> None:
-        sys.__stdout__.flush()
+        try:
+            sys.__stdout__.flush()
+        except Exception:
+            pass
+
+
+def _reset_log() -> None:
+    with jobs_lock:
+        shared_log.clear()
+
+
+def _mark_job_start(state: Dict[str, Any], instance: Any) -> None:
+    with jobs_lock:
+        state["running"] = True
+        state["last_started_at"] = time.time()
+        state["last_finished_at"] = None
+        state["stats"] = None
+        state["instance"] = instance
+
+
+def _mark_job_finish(state: Dict[str, Any], stats: Optional[Dict[str, Any]] = None) -> None:
+    with jobs_lock:
+        state["running"] = False
+        state["last_finished_at"] = time.time()
+        state["stats"] = stats
+        state["instance"] = None
+
+
+def _job_status_payload(state: Dict[str, Any]) -> Dict[str, Any]:
+    with jobs_lock:
+        return {
+            "running": bool(state["running"]),
+            "last_started_at": state["last_started_at"],
+            "last_finished_at": state["last_finished_at"],
+            "stats": state["stats"],
+        }
+
+
+# ----------------- Job threads -----------------
 
 
 def _run_collector_thread() -> None:
-    collector = SubscriptionCollector()
-    log_stream = CollectorLogStream()
+    log_stream = SharedLogStream()
+    _reset_log()
 
-    with collector_lock:
-        collector_state["running"] = True
-        collector_state["last_started_at"] = time.time()
-        collector_state["last_finished_at"] = None
-        collector_state["stats"] = None
-        collector_state["log"].clear()
-        collector_state["instance"] = collector
+    collector = SubscriptionCollector()
+    _mark_job_start(collector_state, collector)
 
     try:
         with contextlib.redirect_stdout(log_stream):
             collector.collect_from_sources_file()
-        with collector_lock:
-            collector_state["stats"] = {"collector_stats": collector.stats}
+        _mark_job_finish(collector_state, {"collector_stats": getattr(collector, "stats", None)})
     except Exception as e:
-        log_stream.write(f"\n[collector] FATAL ERROR: {e}\n")
-    finally:
-        with collector_lock:
-            collector_state["running"] = False
-            collector_state["last_finished_at"] = time.time()
-            collector_state["instance"] = None
+        log_stream.write(f"[collector] FATAL ERROR: {e}\n")
+        _mark_job_finish(collector_state, {"error": str(e)})
 
 
 def _run_importer_thread() -> None:
-    importer = RawConfigImporter(batch_size=1000)
-    log_stream = CollectorLogStream()
+    log_stream = SharedLogStream()
+    _reset_log()
 
-    with collector_lock:
-        importer_state["running"] = True
-        importer_state["last_started_at"] = time.time()
-        importer_state["last_finished_at"] = None
-        importer_state["stats"] = None
-        importer_state["instance"] = importer
-        collector_state["log"].clear()
+    importer = RawConfigImporter(batch_size=1000)
+    _mark_job_start(importer_state, importer)
 
     try:
         with contextlib.redirect_stdout(log_stream):
             importer.import_configs()
-        with collector_lock:
-            importer_state["stats"] = {"importer_stats": importer.stats}
+        _mark_job_finish(importer_state, {"importer_stats": getattr(importer, "stats", None)})
     except Exception as e:
-        log_stream.write(f"\n[importer] FATAL ERROR: {e}\n")
-    finally:
-        with collector_lock:
-            importer_state["running"] = False
-            importer_state["last_finished_at"] = time.time()
-            importer_state["instance"] = None
+        log_stream.write(f"[importer] FATAL ERROR: {e}\n")
+        _mark_job_finish(importer_state, {"error": str(e)})
 
 
 def _run_json_thread() -> None:
-    log_stream = CollectorLogStream()
+    log_stream = SharedLogStream()
+    _reset_log()
 
-    with collector_lock:
-        json_state["running"] = True
-        json_state["last_started_at"] = time.time()
-        json_state["last_finished_at"] = None
-        json_state["stats"] = None
-        json_state["instance"] = None
-        collector_state["log"].clear()
+    updater = JsonConfigUpdater(batch_size=1000)
+    _mark_job_start(json_state, updater)
 
-    with contextlib.redirect_stdout(log_stream):
-        print("[json_updater] starting JSON updater background thread...")
-
-        try:
-            updater = JsonConfigUpdater(batch_size=1000)
-            print("[json_updater] JsonConfigUpdater initialized.")
-            with collector_lock:
-                json_state["instance"] = updater
-        except Exception as e:
-            print(f"[json_updater] FATAL ERROR during init: {e}")
-            with collector_lock:
-                json_state["running"] = False
-                json_state["last_finished_at"] = time.time()
-                json_state["instance"] = None
-            return
-
-        try:
+    try:
+        with contextlib.redirect_stdout(log_stream):
             updater.update_missing_json()
-            with collector_lock:
-                json_state["stats"] = {"json_stats": updater.stats}
-        except Exception as e:
-            print(f"[json_updater] FATAL ERROR inside job: {e}")
-        finally:
-            with collector_lock:
-                json_state["running"] = False
-                json_state["last_finished_at"] = time.time()
-                json_state["instance"] = None
-            print("[json_updater] background thread finished.")
+        _mark_job_finish(json_state, {"json_stats": getattr(updater, "stats", None)})
+    except Exception as e:
+        log_stream.write(f"[json_updater] FATAL ERROR: {e}\n")
+        _mark_job_finish(json_state, {"error": str(e)})
 
 
 def _run_hash_thread() -> None:
-    log_stream = CollectorLogStream()
+    log_stream = SharedLogStream()
+    _reset_log()
 
-    with collector_lock:
-        hash_state["running"] = True
-        hash_state["last_started_at"] = time.time()
-        hash_state["last_finished_at"] = None
-        hash_state["stats"] = None
-        hash_state["instance"] = None
-        collector_state["log"].clear()
+    updater = ConfigHashUpdater(batch_size=1000)
+    _mark_job_start(hash_state, updater)
 
-    with contextlib.redirect_stdout(log_stream):
-        print("[hash_updater] starting hash updater background thread...")
-
-        try:
-            updater = ConfigHashUpdater(batch_size=1000)
-            print("[hash_updater] ConfigHashUpdater initialized.")
-            with collector_lock:
-                hash_state["instance"] = updater
-        except Exception as e:
-            print(f"[hash_updater] FATAL ERROR during init: {e}")
-            with collector_lock:
-                hash_state["running"] = False
-                hash_state["last_finished_at"] = time.time()
-                hash_state["instance"] = None
-            return
-
-        try:
+    try:
+        with contextlib.redirect_stdout(log_stream):
             updater.update_hashes()
-            with collector_lock:
-                hash_state["stats"] = {"hash_stats": updater.stats}
-        except Exception as e:
-            print(f"[hash_updater] FATAL ERROR inside job: {e}")
-        finally:
-            with collector_lock:
-                hash_state["running"] = False
-                hash_state["last_finished_at"] = time.time()
-                hash_state["instance"] = None
-            print("[hash_updater] background thread finished.")
+        _mark_job_finish(hash_state, {"hash_stats": getattr(updater, "stats", None)})
+    except Exception as e:
+        log_stream.write(f"[hash_updater] FATAL ERROR: {e}\n")
+        _mark_job_finish(hash_state, {"error": str(e)})
+
+
+def _run_group_thread() -> None:
+    log_stream = SharedLogStream()
+    _reset_log()
+
+    updater = ConfigGroupUpdater(batch_size=500)
+    _mark_job_start(group_state, updater)
+
+    try:
+        with contextlib.redirect_stdout(log_stream):
+            updater.update_groups()
+        _mark_job_finish(group_state, {"group_stats": getattr(updater, "stats", None)})
+    except Exception as e:
+        log_stream.write(f"[group_updater] FATAL ERROR: {e}\n")
+        _mark_job_finish(group_state, {"error": str(e)})
+
+
+def _run_json_repair_thread() -> None:
+    log_stream = SharedLogStream()
+    _reset_log()
+
+    if JsonRepairUpdater is None:
+        with contextlib.redirect_stdout(log_stream):
+            print("[json_repair] JsonRepairUpdater module not available.")
+        _mark_job_finish(json_repair_state, {"error": "JsonRepairUpdater not available"})
+        return
+
+    updater = JsonRepairUpdater(batch_size=1000)  # type: ignore
+    _mark_job_start(json_repair_state, updater)
+
+    try:
+        with contextlib.redirect_stdout(log_stream):
+            # اسم متد را تلاش می‌کنیم با چند حالت رایج
+            if hasattr(updater, "run"):
+                updater.run()
+            elif hasattr(updater, "repair"):
+                updater.repair()
+            elif hasattr(updater, "repair_invalid_then_convert"):
+                updater.repair_invalid_then_convert()
+            else:
+                raise RuntimeError("JsonRepairUpdater has no runnable entry method (run/repair/repair_invalid_then_convert)")
+        _mark_job_finish(json_repair_state, {"json_repair_stats": getattr(updater, "stats", None)})
+    except Exception as e:
+        log_stream.write(f"[json_repair] FATAL ERROR: {e}\n")
+        _mark_job_finish(json_repair_state, {"error": str(e)})
 
 
 def _run_compress_thread() -> None:
-    log_stream = CollectorLogStream()
+    log_stream = SharedLogStream()
+    _reset_log()
 
-    with collector_lock:
-        compress_state["running"] = True
-        compress_state["last_started_at"] = time.time()
-        compress_state["last_finished_at"] = None
-        compress_state["stats"] = None
-        compress_state["instance"] = None
-        collector_state["log"].clear()
+    _mark_job_start(compress_state, instance=True)
 
-    with contextlib.redirect_stdout(log_stream):
-        print("[compress] starting database compression background thread...")
-
-        try:
+    try:
+        with contextlib.redirect_stdout(log_stream):
             db_path = os.path.abspath(get_db_path())
             db_dir = os.path.dirname(db_path)
-            db_base = os.path.basename(db_path)
+            base = os.path.basename(db_path)
             ts = time.strftime("%Y%m%d-%H%M%S")
-            out_name = f"{db_base}.{ts}.xz"
-            out_path = os.path.join(db_dir, out_name)
-            print(f"[compress] expected output file: {out_path}")
+            out_path = os.path.join(db_dir, f"{base}.{ts}.xz")
 
-            compress_db_main()
+            if compress_db_func is None:
+                raise RuntimeError("compress_db() not available")
+            compress_db_func(db_path, out_path)  # type: ignore
 
-            with collector_lock:
-                compress_state["stats"] = {"compress_stats": {"output_file": out_path}}
-        except Exception as e:
-            print(f"[compress] FATAL ERROR inside job: {e}")
-        finally:
-            with collector_lock:
-                compress_state["running"] = False
-                compress_state["last_finished_at"] = time.time()
-                compress_state["instance"] = None
-            print("[compress] background thread finished.")
+        _mark_job_finish(compress_state, {"output": out_path})
+    except Exception as e:
+        log_stream.write(f"[compress] FATAL ERROR: {e}\n")
+        _mark_job_finish(compress_state, {"error": str(e)})
+
+
+# ----------------- Pydantic models -----------------
 
 
 class SQLQuery(BaseModel):
@@ -344,42 +385,38 @@ class SQLQuery(BaseModel):
     params: Optional[List[Any]] = None
 
 
+# ----------------- Routes: UI -----------------
+
+
 @app.get("/", response_class=HTMLResponse)
-async def index() -> HTMLResponse:
-    _ensure_schema()
-    index_path = STATIC_DIR / "index.html"
+async def index():
     try:
-        html = index_path.read_text(encoding="utf-8")
+        html = INDEX_HTML_PATH.read_text(encoding="utf-8")
     except FileNotFoundError:
-        return HTMLResponse(content="index.html not found", status_code=500)
-    return HTMLResponse(content=html)
+        raise HTTPException(status_code=500, detail="index.html not found")
+    return HTMLResponse(
+        content=html,
+        headers={
+            "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
+            "Pragma": "no-cache",
+            "Expires": "0",
+        },
+    )
+
+
+# ----------------- Routes: API -----------------
 
 
 @app.get("/health")
-async def health() -> Dict[str, Any]:
-    _ensure_schema()
+async def health():
     db_path = get_db_path()
     ok = os.path.exists(db_path)
     return {"status": "ok" if ok else "missing", "db_path": db_path}
 
 
-@app.get("/db/tables")
-async def get_tables() -> JSONResponse:
-    return JSONResponse(list_tables())
-
-
-@app.get("/db/table/{table_name}")
-async def get_table(table_name: str, limit: int = 100) -> JSONResponse:
-    try:
-        data = fetch_table(table_name, limit=limit)
-        return JSONResponse(data)
-    except sqlite3.Error as e:
-        raise HTTPException(status_code=400, detail=str(e))
-
-
 @app.post("/db/query")
-async def post_query(payload: SQLQuery) -> JSONResponse:
-    q = payload.query
+async def post_query(payload: SQLQuery):
+    q = payload.query or ""
     if not q.strip():
         raise HTTPException(status_code=400, detail="Empty query.")
     try:
@@ -389,217 +426,252 @@ async def post_query(payload: SQLQuery) -> JSONResponse:
         raise HTTPException(status_code=400, detail=str(e))
 
 
+# ---- Shared log endpoint (پنل فقط همین را می‌خواند) ----
+
+
+@app.get("/collector/log")
+async def collector_log(offset: int = Query(0, ge=0)):
+    with jobs_lock:
+        total = len(shared_log)
+        if offset < 0 or offset > total:
+            offset = 0
+        lines = shared_log[offset:]
+    return {"offset": offset, "total": total, "lines": lines}
+
+
+# ---- Unified summary endpoint (برای کاهش تعداد requestها) ----
+
+
+@app.get("/jobs/summary")
+async def jobs_summary():
+    with jobs_lock:
+        any_running = any(
+            s["running"]
+            for s in (
+                collector_state,
+                importer_state,
+                json_state,
+                hash_state,
+                group_state,
+                json_repair_state,
+                compress_state,
+            )
+        )
+    return {
+        "db_path": get_db_path(),
+        "any_running": any_running,
+        "jobs": {
+            "collector": _job_status_payload(collector_state),
+            "importer": _job_status_payload(importer_state),
+            "json": _job_status_payload(json_state),
+            "hash": _job_status_payload(hash_state),
+            "group": _job_status_payload(group_state),
+            "json_repair": _job_status_payload(json_repair_state),
+            "compress": _job_status_payload(compress_state),
+        },
+    }
+
+
+# ---- Collector endpoints ----
+
+
 @app.post("/collector/run")
-async def run_collector() -> Dict[str, str]:
-    with collector_lock:
+async def run_collector():
+    with jobs_lock:
         if collector_state["running"]:
             raise HTTPException(status_code=409, detail="Collector is already running")
-    t = threading.Thread(target=_run_collector_thread, daemon=True)
-    t.start()
+        t = threading.Thread(target=_run_collector_thread, daemon=True)
+        t.start()
     return {"status": "started"}
 
 
 @app.post("/collector/stop")
-async def stop_collector() -> Dict[str, str]:
-    with collector_lock:
+async def stop_collector():
+    with jobs_lock:
         if not collector_state["running"]:
             raise HTTPException(status_code=409, detail="Collector is not running")
         inst = collector_state.get("instance")
-        if inst is None:
-            raise HTTPException(status_code=500, detail="Collector instance not available")
+    if inst is None:
+        raise HTTPException(status_code=500, detail="Collector instance not available")
     inst.request_stop()
     return {"status": "stopping"}
 
 
 @app.get("/collector/status")
-async def collector_status() -> Dict[str, Any]:
-    with collector_lock:
-        return {
-            "running": collector_state["running"],
-            "last_started_at": collector_state["last_started_at"],
-            "last_finished_at": collector_state["last_finished_at"],
-            "stats": collector_state["stats"],
-            "log_length": len(job_log_buffer),
-        }
+async def collector_status():
+    return _job_status_payload(collector_state)
 
 
-@app.get("/collector/log")
-async def collector_log(offset: int = Query(0, ge=0)) -> Dict[str, Any]:
-    with collector_lock:
-        lines = list(job_log_buffer)
-        total = len(lines)
-        if offset < 0 or offset > total:
-            offset = 0
-        sliced = lines[offset:]
-        return {"offset": offset, "total": total, "lines": sliced}
+# ---- Importer endpoints ----
 
 
 @app.post("/importer/run")
-async def run_importer() -> Dict[str, str]:
-    with collector_lock:
+async def run_importer():
+    with jobs_lock:
         if importer_state["running"]:
             raise HTTPException(status_code=409, detail="Importer is already running")
-    t = threading.Thread(target=_run_importer_thread, daemon=True)
-    t.start()
+        t = threading.Thread(target=_run_importer_thread, daemon=True)
+        t.start()
     return {"status": "started"}
 
 
 @app.post("/importer/stop")
-async def stop_importer() -> Dict[str, str]:
-    with collector_lock:
+async def stop_importer():
+    with jobs_lock:
         if not importer_state["running"]:
             raise HTTPException(status_code=409, detail="Importer is not running")
         inst = importer_state.get("instance")
-        if inst is None:
-            raise HTTPException(status_code=500, detail="Importer instance not available")
+    if inst is None:
+        raise HTTPException(status_code=500, detail="Importer instance not available")
     inst.request_stop()
     return {"status": "stopping"}
 
 
 @app.get("/importer/status")
-async def importer_status() -> Dict[str, Any]:
-    with collector_lock:
-        return {
-            "running": importer_state["running"],
-            "last_started_at": importer_state["last_started_at"],
-            "last_finished_at": importer_state["last_finished_at"],
-            "stats": importer_state["stats"],
-        }
+async def importer_status():
+    return _job_status_payload(importer_state)
+
+
+# ---- JSON updater endpoints ----
 
 
 @app.post("/json/run")
-async def run_json() -> Dict[str, str]:
-    with collector_lock:
+async def run_json():
+    with jobs_lock:
         if json_state["running"]:
             raise HTTPException(status_code=409, detail="JSON updater is already running")
-    t = threading.Thread(target=_run_json_thread, daemon=True)
-    t.start()
+        t = threading.Thread(target=_run_json_thread, daemon=True)
+        t.start()
     return {"status": "started"}
 
 
 @app.post("/json/stop")
-async def stop_json() -> Dict[str, str]:
-    with collector_lock:
+async def stop_json():
+    with jobs_lock:
         if not json_state["running"]:
             raise HTTPException(status_code=409, detail="JSON updater is not running")
         inst = json_state.get("instance")
-        if inst is None:
-            raise HTTPException(status_code=500, detail="JSON updater instance not available")
+    if inst is None:
+        raise HTTPException(status_code=500, detail="JSON updater instance not available")
     inst.request_stop()
     return {"status": "stopping"}
 
 
 @app.get("/json/status")
-async def json_status() -> Dict[str, Any]:
-    with collector_lock:
-        return {
-            "running": json_state["running"],
-            "last_started_at": json_state["last_started_at"],
-            "last_finished_at": json_state["last_finished_at"],
-            "stats": json_state["stats"],
-        }
+async def json_status():
+    return _job_status_payload(json_state)
+
+
+# ---- JSON repair endpoints ----
+
+
+@app.post("/json_repair/run")
+async def run_json_repair():
+    with jobs_lock:
+        if json_repair_state["running"]:
+            raise HTTPException(status_code=409, detail="JSON repair is already running")
+        t = threading.Thread(target=_run_json_repair_thread, daemon=True)
+        t.start()
+    return {"status": "started"}
+
+
+@app.post("/json_repair/stop")
+async def stop_json_repair():
+    with jobs_lock:
+        if not json_repair_state["running"]:
+            raise HTTPException(status_code=409, detail="JSON repair is not running")
+        inst = json_repair_state.get("instance")
+    if inst is None:
+        raise HTTPException(status_code=500, detail="JSON repair instance not available")
+    # اگر کلاس شما request_stop دارد:
+    if hasattr(inst, "request_stop"):
+        inst.request_stop()
+        return {"status": "stopping"}
+    return {"status": "no_stop_supported"}
+
+
+@app.get("/json_repair/status")
+async def json_repair_status():
+    return _job_status_payload(json_repair_state)
+
+
+# ---- Hash updater endpoints ----
 
 
 @app.post("/hash/run")
-async def run_hash() -> Dict[str, str]:
-    with collector_lock:
+async def run_hash():
+    with jobs_lock:
         if hash_state["running"]:
             raise HTTPException(status_code=409, detail="Hash updater is already running")
-    t = threading.Thread(target=_run_hash_thread, daemon=True)
-    t.start()
+        t = threading.Thread(target=_run_hash_thread, daemon=True)
+        t.start()
     return {"status": "started"}
 
 
 @app.post("/hash/stop")
-async def stop_hash() -> Dict[str, str]:
-    with collector_lock:
+async def stop_hash():
+    with jobs_lock:
         if not hash_state["running"]:
             raise HTTPException(status_code=409, detail="Hash updater is not running")
         inst = hash_state.get("instance")
-        if inst is None:
-            raise HTTPException(status_code=500, detail="Hash updater instance not available")
+    if inst is None:
+        raise HTTPException(status_code=500, detail="Hash updater instance not available")
     inst.request_stop()
     return {"status": "stopping"}
 
 
 @app.get("/hash/status")
-async def hash_status() -> Dict[str, Any]:
-    with collector_lock:
-        return {
-            "running": hash_state["running"],
-            "last_started_at": hash_state["last_started_at"],
-            "last_finished_at": hash_state["last_finished_at"],
-            "stats": hash_state["stats"],
-        }
+async def hash_status():
+    return _job_status_payload(hash_state)
+
+
+# ---- Group updater endpoints ----
+
+
+@app.post("/group/run")
+async def run_group():
+    with jobs_lock:
+        if group_state["running"]:
+            raise HTTPException(status_code=409, detail="Group updater is already running")
+        t = threading.Thread(target=_run_group_thread, daemon=True)
+        t.start()
+    return {"status": "started"}
+
+
+@app.post("/group/stop")
+async def stop_group():
+    with jobs_lock:
+        if not group_state["running"]:
+            raise HTTPException(status_code=409, detail="Group updater is not running")
+        inst = group_state.get("instance")
+    if inst is None:
+        raise HTTPException(status_code=500, detail="Group updater instance not available")
+    inst.request_stop()
+    return {"status": "stopping"}
+
+
+@app.get("/group/status")
+async def group_status():
+    return _job_status_payload(group_state)
+
+
+# ---- Compress endpoints ----
 
 
 @app.post("/compress/run")
-async def run_compress() -> Dict[str, str]:
-    with collector_lock:
+async def run_compress():
+    with jobs_lock:
         if compress_state["running"]:
-            raise HTTPException(status_code=409, detail="Compress job is already running")
-    t = threading.Thread(target=_run_compress_thread, daemon=True)
-    t.start()
+            raise HTTPException(status_code=409, detail="Compress is already running")
+        t = threading.Thread(target=_run_compress_thread, daemon=True)
+        t.start()
     return {"status": "started"}
 
 
 @app.get("/compress/status")
-async def compress_status() -> Dict[str, Any]:
-    with collector_lock:
-        return {
-            "running": compress_state["running"],
-            "last_started_at": compress_state["last_started_at"],
-            "last_finished_at": compress_state["last_finished_at"],
-            "stats": compress_state["stats"],
-        }
+async def compress_status():
+    return _job_status_payload(compress_state)
 
 
-@app.get("/jobs/summary")
-async def jobs_summary() -> Dict[str, Any]:
-    _ensure_schema()
-    db_path = get_db_path()
-    with collector_lock:
-        log_lines = list(job_log_buffer)
-        jobs = {
-            "collector": {
-                "running": collector_state["running"],
-                "last_started_at": collector_state["last_started_at"],
-                "last_finished_at": collector_state["last_finished_at"],
-                "stats": collector_state["stats"],
-            },
-            "importer": {
-                "running": importer_state["running"],
-                "last_started_at": importer_state["last_started_at"],
-                "last_finished_at": importer_state["last_finished_at"],
-                "stats": importer_state["stats"],
-            },
-            "json": {
-                "running": json_state["running"],
-                "last_started_at": json_state["last_started_at"],
-                "last_finished_at": json_state["last_finished_at"],
-                "stats": json_state["stats"],
-            },
-            "hash": {
-                "running": hash_state["running"],
-                "last_started_at": hash_state["last_started_at"],
-                "last_finished_at": hash_state["last_finished_at"],
-                "stats": hash_state["stats"],
-            },
-            "compress": {
-                "running": compress_state["running"],
-                "last_started_at": compress_state["last_started_at"],
-                "last_finished_at": compress_state["last_finished_at"],
-                "stats": compress_state["stats"],
-            },
-        }
-
-        return {
-            "db_path": db_path,
-            "jobs": jobs,
-            "log": {"lines": log_lines, "total": len(log_lines)},
-        }
-
-
-def get_app() -> FastAPI:
-    _ensure_schema()
+def get_app():
     return app

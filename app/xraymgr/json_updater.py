@@ -2,6 +2,7 @@ import json
 import re
 import sqlite3
 import threading
+import time
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 from .settings import get_db_path
@@ -14,16 +15,9 @@ class JsonUpdaterStopped(Exception):
 
 class JsonConfigUpdater:
     """
-    پر کردن ستون config_json در جدول links برای کانفیگ‌هایی که:
-      - config_json IS NULL یا خالی است
-      - url غیرخالی است
-      - (در صورت وجود ستون‌ها) is_invalid = 0 و is_protocol_unsupported = 0
-
-    منطق پروتکل:
-      - فقط پروتکل‌های زیر فعلاً ساپورت می‌شوند:
-        vmess / vless / trojan / ss / shadowsocks / shadowsocks2022
-      - هر URL که پروتکل دیگری داشته باشد → is_protocol_unsupported = 1 (اگر ستون وجود داشته باشد)
-      - برای پروتکل‌های ساپورت‌شده، از jsbridge برای تبدیل به outbound JSON استفاده می‌شود.
+    ساخت config_json در جدول links (Batch=1000).
+    این فایل خودش ستون‌های اختیاری is_invalid و is_protocol_unsupported را (اگر نبودند) اضافه می‌کند
+    تا query به خطا نخورد و بتواند ردیف‌های خراب/unsupported را اسکیپ کند.
     """
 
     SUPPORTED_PROTOCOLS = {
@@ -46,55 +40,26 @@ class JsonConfigUpdater:
             "urls_converted": 0,
             "urls_failed": 0,
             "rows_updated": 0,
-            "rows_marked_invalid": 0,
-            "rows_marked_unsupported": 0,
         }
 
         self._stop_event = threading.Event()
         self._stats_lock = threading.Lock()
 
-    # ---------- کنترل توقف ----------
+    # ---------- stop ----------
     def request_stop(self) -> None:
         print("[json_updater] stop requested")
         self._stop_event.set()
+        # اگر وسط call به node گیر کند، این کمک می‌کند سریع‌تر آزاد شود
+        try:
+            jsbridge.close_global_converter()
+        except Exception:
+            pass
 
     def _check_stopped(self) -> None:
         if self._stop_event.is_set():
             raise JsonUpdaterStopped()
 
-    # ---------- schema helpers ----------
-    @staticmethod
-    def _table_columns(conn: sqlite3.Connection, table: str) -> List[str]:
-        cur = conn.cursor()
-        cur.execute(f"PRAGMA table_info({table})")
-        return [str(r[1]) for r in cur.fetchall()]  # (cid, name, type, notnull, dflt, pk)
-
-    @classmethod
-    def _ensure_links_columns(cls, conn: sqlite3.Connection) -> None:
-        """
-        برای پایدار کردن job روی DBهای قدیمی‌تر:
-        اگر ستون‌های is_invalid / is_protocol_unsupported وجود نداشته باشند، اضافه‌شان می‌کند.
-        """
-        existing = set(cls._table_columns(conn, "links"))
-        alters: List[str] = []
-
-        if "is_invalid" not in existing:
-            alters.append("ALTER TABLE links ADD COLUMN is_invalid INTEGER NOT NULL DEFAULT 0")
-        if "is_protocol_unsupported" not in existing:
-            alters.append("ALTER TABLE links ADD COLUMN is_protocol_unsupported INTEGER NOT NULL DEFAULT 0")
-
-        if not alters:
-            return
-
-        cur = conn.cursor()
-        for stmt in alters:
-            try:
-                cur.execute(stmt)
-            except sqlite3.Error as e:
-                print(f"[json_updater] WARN: schema alter failed: {e} (stmt={stmt})")
-        conn.commit()
-
-    # ---------- ابزارهای کمکی ----------
+    # ---------- helpers ----------
     @staticmethod
     def _detect_protocol(url: str) -> Optional[str]:
         if not url:
@@ -114,10 +79,51 @@ class JsonConfigUpdater:
             return json.dumps(obj, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
         return json.dumps(obj, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
 
-    def _convert_url_to_outbound(self, url: str) -> Union[Dict[str, Any], Any, str]:
+    @staticmethod
+    def _table_columns(conn: sqlite3.Connection, table: str) -> List[str]:
+        cur = conn.cursor()
+        cur.execute(f"PRAGMA table_info({table})")
+        return [str(r[1]) for r in cur.fetchall()]
+
+    @classmethod
+    def _ensure_optional_columns(cls, conn: sqlite3.Connection) -> None:
+        existing = set(cls._table_columns(conn, "links"))
+        alters: List[str] = []
+        if "is_invalid" not in existing:
+            alters.append("ALTER TABLE links ADD COLUMN is_invalid INTEGER NOT NULL DEFAULT 0")
+        if "is_protocol_unsupported" not in existing:
+            alters.append("ALTER TABLE links ADD COLUMN is_protocol_unsupported INTEGER NOT NULL DEFAULT 0")
+
+        if not alters:
+            return
+
+        cur = conn.cursor()
+        for stmt in alters:
+            try:
+                cur.execute(stmt)
+            except sqlite3.Error as e:
+                print(f"[json_updater] WARN: schema alter failed: {e} (stmt={stmt})")
+        conn.commit()
+
+    def _convert_url_to_outbound(self, url: str) -> Union[Dict[str, Any], Any]:
         return jsbridge.convert_to_outbound(url, timeout=self.node_timeout)
 
-    # ---------- منطق اصلی ----------
+    def _convert_with_one_retry(self, url: str) -> Union[Dict[str, Any], Any]:
+        try:
+            return self._convert_url_to_outbound(url)
+        except jsbridge.NodeBridgeError as e:
+            msg = str(e)
+            if "INFRA:" in msg or "READY" in msg or "init" in msg.lower() or "OUTBOUND_NOT_FOUND" in msg:
+                print(f"[json_updater] INFRA error from bridge, restarting converter and retrying once: {e}")
+                try:
+                    jsbridge.close_global_converter()
+                except Exception:
+                    pass
+                time.sleep(0.2)
+                return self._convert_url_to_outbound(url)
+            raise
+
+    # ---------- main ----------
     def update_missing_json(self) -> None:
         print(f"[json_updater] starting JSON update job (batch_size={self.batch_size})")
 
@@ -128,10 +134,11 @@ class JsonConfigUpdater:
         conn.execute("PRAGMA temp_store = MEMORY;")
 
         try:
+            # ensure columns so query does not break on your current DB schema
             try:
-                self._ensure_links_columns(conn)
+                self._ensure_optional_columns(conn)
             except Exception as e:
-                print(f"[json_updater] WARN: could not ensure schema columns: {e}")
+                print(f"[json_updater] WARN: could not ensure optional columns: {e}")
 
             cols = set(self._table_columns(conn, "links"))
             has_is_invalid = "is_invalid" in cols
@@ -161,6 +168,7 @@ class JsonConfigUpdater:
                 cur = conn.cursor()
                 cur.execute(sql, (last_id, self.batch_size))
                 rows = cur.fetchall()
+
                 if not rows:
                     print("[json_updater] no more candidates, exiting loop.")
                     break
@@ -201,25 +209,22 @@ class JsonConfigUpdater:
 
                     proto = self._detect_protocol(url_str)
                     if not proto:
-                        print(f"[json_updater] no protocol detected for id={row_id}, url={url_str!r}")
                         mark_invalid.append(row_id)
                         with self._stats_lock:
                             self.stats["urls_failed"] += 1
                         continue
 
                     if proto not in self.SUPPORTED_PROTOCOLS:
-                        print(f"[json_updater] unsupported protocol {proto!r} for id={row_id}")
                         mark_unsupported.append(row_id)
                         with self._stats_lock:
                             self.stats["urls_failed"] += 1
                         continue
 
                     try:
-                        outbound = self._convert_url_to_outbound(url_str)
+                        outbound = self._convert_with_one_retry(url_str)
                         json_text = self._canonical_json(outbound)
                         if not json_text:
                             raise ValueError("empty JSON from bridge")
-
                         updates_json.append((json_text, row_id))
                         with self._stats_lock:
                             self.stats["urls_converted"] += 1
@@ -230,81 +235,37 @@ class JsonConfigUpdater:
                             self.stats["urls_failed"] += 1
 
                 rows_changed = 0
-                cur = conn.cursor()
+                try:
+                    with conn:
+                        cur = conn.cursor()
 
-                if updates_json:
-                    try:
-                        cur.execute("BEGIN")
-                        cur.executemany("UPDATE links SET config_json = ? WHERE id = ?", updates_json)
-                        conn.commit()
-                        rows_changed += cur.rowcount
-                        print(
-                            f"[json_updater] updated config_json for {len(updates_json)} rows "
-                            f"(sqlite rowcount={cur.rowcount})"
-                        )
-                    except Exception as e:
-                        conn.rollback()
-                        print(f"[json_updater] ERROR committing config_json updates: {e}")
+                        if updates_json:
+                            cur.executemany("UPDATE links SET config_json = ? WHERE id = ?", updates_json)
+                            rows_changed += len(updates_json)
 
-                if mark_invalid:
-                    try:
-                        if has_is_invalid:
-                            cur.execute("BEGIN")
+                        if has_is_invalid and mark_invalid:
                             cur.executemany(
                                 "UPDATE links SET is_invalid = 1 WHERE id = ?",
                                 [(rid,) for rid in mark_invalid],
                             )
-                            conn.commit()
-                            with self._stats_lock:
-                                self.stats["rows_marked_invalid"] += len(mark_invalid)
-                            rows_changed += cur.rowcount
-                        else:
-                            cur.execute("BEGIN")
-                            cur.executemany(
-                                "UPDATE links SET needs_replace = 1, is_alive = 0 WHERE id = ?",
-                                [(rid,) for rid in mark_invalid],
-                            )
-                            conn.commit()
-                            rows_changed += cur.rowcount
-                        print(
-                            f"[json_updater] marked {len(mark_invalid)} rows as invalid "
-                            f"(sqlite rowcount={cur.rowcount})"
-                        )
-                    except Exception as e:
-                        conn.rollback()
-                        print(f"[json_updater] ERROR marking invalid rows: {e}")
+                            rows_changed += len(mark_invalid)
 
-                if mark_unsupported:
-                    try:
-                        if has_unsupported:
-                            cur.execute("BEGIN")
+                        if has_unsupported and mark_unsupported:
                             cur.executemany(
                                 "UPDATE links SET is_protocol_unsupported = 1 WHERE id = ?",
                                 [(rid,) for rid in mark_unsupported],
                             )
-                            conn.commit()
-                            with self._stats_lock:
-                                self.stats["rows_marked_unsupported"] += len(mark_unsupported)
-                            rows_changed += cur.rowcount
-                        else:
-                            cur.execute("BEGIN")
-                            cur.executemany(
-                                "UPDATE links SET needs_replace = 1 WHERE id = ?",
-                                [(rid,) for rid in mark_unsupported],
-                            )
-                            conn.commit()
-                            rows_changed += cur.rowcount
-                        print(
-                            f"[json_updater] marked {len(mark_unsupported)} rows as protocol_unsupported "
-                            f"(sqlite rowcount={cur.rowcount})"
-                        )
-                    except Exception as e:
-                        conn.rollback()
-                        print(f"[json_updater] ERROR marking unsupported rows: {e}")
+                            rows_changed += len(mark_unsupported)
 
-                if rows_changed:
                     with self._stats_lock:
                         self.stats["rows_updated"] += rows_changed
+
+                    print(
+                        "[json_updater] batch committed: "
+                        f"config_json={len(updates_json)}, invalid={len(mark_invalid)}, unsupported={len(mark_unsupported)}"
+                    )
+                except Exception as e:
+                    print(f"[json_updater] ERROR committing batch: {e}")
 
         except JsonUpdaterStopped:
             print("[json_updater] stopped by request.")
@@ -323,8 +284,6 @@ class JsonConfigUpdater:
             f"\n urls converted: {self.stats['urls_converted']}"
             f"\n urls failed: {self.stats['urls_failed']}"
             f"\n rows updated: {self.stats['rows_updated']}"
-            f"\n rows marked invalid: {self.stats['rows_marked_invalid']}"
-            f"\n rows marked unsupported: {self.stats['rows_marked_unsupported']}"
         )
 
 
