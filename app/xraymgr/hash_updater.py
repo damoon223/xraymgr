@@ -175,8 +175,11 @@ class ConfigHashUpdater:
             ws = stream.get("wsSettings") or stream.get("httpSettings") or {}
             if isinstance(ws, dict):
                 p = ws.get("path")
-                if isinstance(p, str) and p.strip():
-                    path = p.strip()
+                if isinstance(p, str):
+                    p2 = p.strip()
+                    # canonicalize default WS/HTTP path: "" and "/" are equivalent
+                    if p2 and p2 != "/":
+                        path = p2
                 headers = ws.get("headers") or {}
                 if isinstance(headers, dict):
                     h = headers.get("Host") or headers.get("host")

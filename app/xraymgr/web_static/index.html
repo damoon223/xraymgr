@@ -44,6 +44,8 @@
     <div class="tabs">
       <button class="tab-button active" type="button" data-tab="jobs">Jobها / پردازش‌ها</button>
       <button class="tab-button" type="button" data-tab="db">دیتابیس / SQL</button>
+      <button class="tab-button" type="button" data-tab="test">تست</button>
+      <button class="tab-button" type="button" data-tab="settings">تنظیمات</button>
     </div>
 
     <!-- TAB: JOBS -->
@@ -194,6 +196,153 @@
         <div id="sql-result" class="table-container">
           <div class="muted" style="padding:10px;">نتیجه‌ای برای نمایش نیست.</div>
         </div>
+      </div>
+    </section>
+
+    <!-- TAB: TEST -->
+    <section id="tab-test" class="tab-content">
+      <div class="jobs-grid">
+        <div class="card">
+          <div class="card-header">
+            <h2>تست کانفیگ‌ها</h2>
+            <small>اجرای تست از طریق اسکریپت (log جداگانه)</small>
+          </div>
+
+          <div class="status-line">
+            وضعیت تست:
+            <span id="test-status" class="pill gray"><span class="dot"></span>...</span>
+          </div>
+          <div id="test-stats" class="muted"></div>
+
+          <div class="btn-row">
+            <button id="test-run-btn" type="button">شروع تست</button>
+            <button id="test-stop-btn" type="button" class="danger" disabled>توقف تست</button>
+            <button id="test-refresh-btn" type="button" class="secondary">رفرش وضعیت</button>
+          </div>
+
+          <div class="muted">
+            تنظیمات تست از تب «تنظیمات» خوانده می‌شود.
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <h2>لاگ تست</h2>
+            <small>auto-refresh فعال است</small>
+          </div>
+          <pre id="test-log">(هنوز لاگی ثبت نشده است)</pre>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB: SETTINGS -->
+    <section id="tab-settings" class="tab-content">
+      <div class="card">
+        <div class="card-header">
+          <h2>تنظیمات</h2>
+          <small>به‌محض تغییر ذخیره می‌شود و از همان فایل خوانده خواهد شد.</small>
+        </div>
+
+        <div class="status-line">
+          فایل تنظیمات:
+          <code id="settings-path">...</code>
+        </div>
+
+        <div id="settings-status" class="status-line"></div>
+
+        <hr />
+
+        <div class="label-row">
+          <div>تنظیمات تست</div>
+          <div class="muted">این مقادیر برای اجرای تست استفاده می‌شود.</div>
+        </div>
+
+        <div class="label-row">
+          <div>count</div>
+          <div class="muted">تعداد لینک برای تست</div>
+        </div>
+        <input id="set-test-count" type="number" min="1" step="1" />
+
+        <div class="label-row">
+          <div>parallel</div>
+          <div class="muted">تعداد همزمانی</div>
+        </div>
+        <input id="set-test-parallel" type="number" min="1" step="1" />
+
+        <div class="label-row">
+          <div>port_start</div>
+          <div class="muted">شروع رنج پورت تست</div>
+        </div>
+        <input id="set-test-port-start" type="number" min="1" step="1" />
+
+        <div class="label-row">
+          <div>port_count</div>
+          <div class="muted">تعداد پورت‌های تست (مثلاً 100 یعنی port_start..port_start+99)</div>
+        </div>
+        <input id="set-test-port-count" type="number" min="1" step="1" />
+
+        <div class="label-row">
+          <div>inbound_tag_prefix</div>
+          <div class="muted">مثلاً in_test_ که می‌شود in_test_9000</div>
+        </div>
+        <input id="set-test-tag-prefix" type="text" />
+
+        <div class="label-row">
+          <div>check_timeout_sec</div>
+          <div class="muted">timeout هر تست (ثانیه)</div>
+        </div>
+        <input id="set-test-timeout" type="number" min="1" step="1" />
+
+        <div class="label-row">
+          <div>socks_user</div>
+          <div class="muted">برای inbound socks5</div>
+        </div>
+        <input id="set-test-socks-user" type="text" />
+
+        <div class="label-row">
+          <div>socks_pass</div>
+          <div class="muted">برای inbound socks5</div>
+        </div>
+        <input id="set-test-socks-pass" type="text" />
+
+        <div class="label-row">
+          <div>xray_bin</div>
+          <div class="muted">مسیر یا نام باینری xray</div>
+        </div>
+        <input id="set-test-xray-bin" type="text" />
+
+        <div class="label-row">
+          <div>api_server</div>
+          <div class="muted">مثلاً 127.0.0.1:10085</div>
+        </div>
+        <input id="set-test-api-server" type="text" />
+
+        <div class="label-row">
+          <div>socks_listen</div>
+          <div class="muted">listen IP برای inbound ها</div>
+        </div>
+        <input id="set-test-socks-listen" type="text" />
+
+        <hr />
+
+        <div class="label-row">
+          <div>کوئری‌های آماده</div>
+          <div class="muted">برای تب SQL</div>
+        </div>
+
+        <div id="settings-sql-presets"></div>
+
+        <div class="btn-row">
+          <button id="sql-preset-add-btn" type="button" class="secondary">اضافه کردن preset</button>
+        </div>
+
+        <hr />
+
+        <div class="label-row">
+          <div>base_routing</div>
+          <div class="muted">JSON (برای موارد پیچیده همینجا ذخیره می‌شود)</div>
+        </div>
+        <textarea id="set-base-routing" placeholder="{}"></textarea>
       </div>
     </section>
 

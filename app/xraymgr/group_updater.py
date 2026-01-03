@@ -1,84 +1,148 @@
 import sqlite3
-from typing import Optional, Dict
+from typing import Optional, Dict, List
 
 from .settings import get_db_path
 
 
 class ConfigGroupUpdater:
     """
-    Job مخصوص گروهبندی کانفیگ‌ها بر اساس config_hash.
+    Job گروه‌بندی کانفیگ‌ها بر اساس config_hash.
 
-    منطق:
-      - فقط ردیف‌هایی که config_hash پر و config_group_id خالی دارند پردازش می‌شوند.
-      - برای هر config_hash:
-          * اگر قبلاً گروهی برای آن ساخته شده باشد (config_group_id غیر خالی):
-                همان group_id برای ردیف‌های جدید استفاده می‌شود.
-          * اگر گروهی وجود نداشته باشد:
-                کمترین id برای آن hash به‌عنوان پرایمری انتخاب می‌شود و
-                config_group_id همه‌ی ردیف‌های آن hash برابر همان id (به صورت TEXT) می‌شود.
+    رفتار مورد انتظار:
+      1) فقط برای «جدیدها» group_id تعیین کند:
+         یعنی hashهایی که هنوز حداقل یک ردیف با config_group_id NULL/'' دارند.
+         - اگر group_id از قبل برای همان hash وجود دارد، فقط NULL/'' ها را با همان group_id پر می‌کند.
+         - اگر group_id وجود ندارد، group_id را برابر min(id) همان hash می‌گذارد.
+         - group_id های از قبل ست‌شده را دست نمی‌زند (ریچک/ری‌رایت نمی‌کند).
+
+      2) برای همهٔ «گروه‌های کامل» (یعنی hashهایی که دیگر هیچ NULL/'' ندارند)،
+         فقط enforce کند که «اولی» (min(id)) primary باشد.
+         - اگر already درست است، هیچ کاری نمی‌کند.
     """
 
-    def __init__(self, batch_size: int = 500):
+    def __init__(self, batch_size: int = 500) -> None:
         self.batch_size = batch_size
         self.stats: Dict[str, int] = {
-            "total_candidate_hashes": 0,  # تعداد hashهایی که باید پردازش شوند
-            "hashes_seen": 0,             # چند hash واقعاً پردازش شد
-            "batches": 0,                 # چند batch اجرا شد
-            "groups_created": 0,          # چند گروه جدید ساخته شد
-            "rows_grouped": 0,            # چند ردیف config_group_id گرفتند
+            "batches_group": 0,
+            "hashes_grouped": 0,
+            "rows_grouped": 0,
+            "groups_created": 0,
+            "batches_primary": 0,
+            "hashes_primary_fixed": 0,
+            "rows_primary_fixed": 0,
         }
         self._stop_requested = False
 
     def request_stop(self) -> None:
-        """برای توقف ملایم job از بیرون (مثلاً از پنل وب)."""
         self._stop_requested = True
 
     def _get_connection(self) -> sqlite3.Connection:
-        db_path = get_db_path()
-        conn = sqlite3.connect(db_path)
+        conn = sqlite3.connect(get_db_path())
         conn.row_factory = sqlite3.Row
+        conn.execute("PRAGMA foreign_keys=ON")
+        conn.execute("PRAGMA busy_timeout=5000")
         return conn
 
-    # ------------ کوئری‌های کمکی ------------
+    # -------------------------------
+    # Batch selectors
+    # -------------------------------
 
-    def _count_total_candidate_hashes(self, cur: sqlite3.Cursor) -> int:
+    def _fetch_hashes_needing_group(self, cur: sqlite3.Cursor) -> List[str]:
         """
-        شمارش تقریبی تعداد hashهایی که هنوز config_group_id خالی دارند.
-        فقط برای آمار؛ اگر دیتابیس خیلی بزرگ است می‌شود این را حذف کرد.
+        فقط hashهایی که هنوز حداقل یک ردیف با config_group_id NULL/'' دارند.
         """
         cur.execute(
             """
-            SELECT COUNT(DISTINCT config_hash) AS cnt
-            FROM links
-            WHERE config_hash IS NOT NULL
-              AND config_hash != ''
-              AND (config_group_id IS NULL OR config_group_id = '')
-            """
-        )
-        row = cur.fetchone()
-        return int(row["cnt"]) if row and row["cnt"] is not None else 0
-
-    def _fetch_next_hash_batch(self, cur: sqlite3.Cursor) -> list[str]:
-        """
-        گرفتن batch بعدی از config_hash‌هایی که هنوز group نشده‌اند.
-        """
-        cur.execute(
-            """
-            SELECT DISTINCT config_hash
-            FROM links
-            WHERE config_hash IS NOT NULL
-              AND config_hash != ''
-              AND (config_group_id IS NULL OR config_group_id = '')
+            SELECT DISTINCT l.config_hash
+            FROM links l
+            WHERE l.config_hash IS NOT NULL
+              AND l.config_hash != ''
+              AND EXISTS (
+                SELECT 1
+                FROM links u
+                WHERE u.config_hash = l.config_hash
+                  AND (u.config_group_id IS NULL OR u.config_group_id = '')
+              )
             LIMIT ?
             """,
             (self.batch_size,),
         )
         rows = cur.fetchall()
-        return [row["config_hash"] for row in rows]
+        return [str(r["config_hash"]) for r in rows if r and r["config_hash"]]
 
-    def _find_existing_group_id(self, cur: sqlite3.Cursor, h: str) -> Optional[str]:
+    def _fetch_hashes_needing_primary_fix(self, cur: sqlite3.Cursor) -> List[str]:
         """
-        اگر قبلاً برای این hash گروهی ساخته شده باشد، یک config_group_id برمی‌گرداند.
+        فقط hashهایی که «گروه کامل» هستند (هیچ NULL/'' ندارند) و primary آن‌ها اشتباه است:
+          - primary_count != 1
+          یا
+          - primary_id != min_id
+        """
+        cur.execute(
+            """
+            SELECT DISTINCT l.config_hash
+            FROM links l
+            WHERE l.config_hash IS NOT NULL
+              AND l.config_hash != ''
+              AND NOT EXISTS (
+                SELECT 1
+                FROM links u
+                WHERE u.config_hash = l.config_hash
+                  AND (u.config_group_id IS NULL OR u.config_group_id = '')
+              )
+              AND (
+                (SELECT COUNT(*)
+                 FROM links p
+                 WHERE p.config_hash = l.config_hash
+                   AND COALESCE(p.is_config_primary, 0) = 1
+                ) != 1
+                OR
+                (SELECT MIN(id)
+                 FROM links p
+                 WHERE p.config_hash = l.config_hash
+                   AND COALESCE(p.is_config_primary, 0) = 1
+                ) IS NULL
+                OR
+                (SELECT MIN(id)
+                 FROM links p
+                 WHERE p.config_hash = l.config_hash
+                   AND COALESCE(p.is_config_primary, 0) = 1
+                ) !=
+                (SELECT MIN(id)
+                 FROM links m
+                 WHERE m.config_hash = l.config_hash
+                )
+              )
+            LIMIT ?
+            """,
+            (self.batch_size,),
+        )
+        rows = cur.fetchall()
+        return [str(r["config_hash"]) for r in rows if r and r["config_hash"]]
+
+    # -------------------------------
+    # Core helpers
+    # -------------------------------
+
+    def _select_min_id_for_hash(self, cur: sqlite3.Cursor, h: str) -> Optional[int]:
+        cur.execute(
+            """
+            SELECT MIN(id) AS min_id
+            FROM links
+            WHERE config_hash = ?
+            """,
+            (h,),
+        )
+        row = cur.fetchone()
+        if not row or row["min_id"] is None:
+            return None
+        try:
+            return int(row["min_id"])
+        except Exception:
+            return None
+
+    def _find_existing_group_id_for_hash(self, cur: sqlite3.Cursor, h: str) -> Optional[str]:
+        """
+        group_id موجود (اگر هست) را برمی‌گرداند. (قدیمی‌ها را ری‌رایت نمی‌کنیم)
         """
         cur.execute(
             """
@@ -87,26 +151,6 @@ class ConfigGroupUpdater:
             WHERE config_hash = ?
               AND config_group_id IS NOT NULL
               AND config_group_id != ''
-            LIMIT 1
-            """,
-            (h,),
-        )
-        row = cur.fetchone()
-        if row:
-            gid = row["config_group_id"]
-            if gid:
-                return str(gid)
-        return None
-
-    def _select_primary_id_for_hash(self, cur: sqlite3.Cursor, h: str) -> Optional[int]:
-        """
-        انتخاب id پرایمری برای یک hash (کمترین id).
-        """
-        cur.execute(
-            """
-            SELECT id
-            FROM links
-            WHERE config_hash = ?
             ORDER BY id
             LIMIT 1
             """,
@@ -115,120 +159,192 @@ class ConfigGroupUpdater:
         row = cur.fetchone()
         if not row:
             return None
-        return int(row["id"])
+        gid = row["config_group_id"]
+        if gid is None:
+            return None
+        gid_s = str(gid).strip()
+        return gid_s or None
 
-    def _ensure_primary_flag(self, cur: sqlite3.Cursor, primary_id: Optional[int]) -> None:
+    def _fill_missing_group_id_only(self, cur: sqlite3.Cursor, h: str, group_id: str) -> int:
         """
-        مطمئن می‌شود ردیف پرایمری is_config_primary = 1 داشته باشد.
+        فقط NULL/'' ها را پر می‌کند. group_id های موجود را دست نمی‌زند.
         """
-        if primary_id is None:
-            return
         cur.execute(
             """
             UPDATE links
-            SET is_config_primary = 1
-            WHERE id = ?
-            """,
-            (primary_id,),
-        )
-
-    # ------------ پردازش هر hash ------------
-
-    def _process_single_hash(self, cur: sqlite3.Cursor, h: str) -> None:
-        # سعی می‌کنیم اگر قبلاً گروپی برای این hash وجود دارد، از همان استفاده کنیم
-        group_id = self._find_existing_group_id(cur, h)
-        primary_id: Optional[int] = None
-
-        if group_id is None:
-            # هیچ گروپی وجود ندارد → ساخت گروه جدید
-            primary_id = self._select_primary_id_for_hash(cur, h)
-            if primary_id is None:
-                return
-            group_id = str(primary_id)
-            self.stats["groups_created"] += 1
-            # این ردیف را به‌طور صریح به‌عنوان پرایمری علامت می‌زنیم
-            self._ensure_primary_flag(cur, primary_id)
-        else:
-            # اگر group_id شبیه عدد بود، پرایمری را از روی آن حدس می‌زنیم
-            try:
-                primary_id = int(group_id)
-            except (TypeError, ValueError):
-                primary_id = None
-
-        # اختصاص group_id به همه‌ی ردیف‌هایی که این hash را دارند و هنوز group نشده‌اند
-        cur.execute(
-            """
-            UPDATE links
-            SET config_group_id = ?,
-                is_config_primary = CASE WHEN id = ? THEN 1 ELSE is_config_primary END
+            SET config_group_id = ?
             WHERE config_hash = ?
               AND (config_group_id IS NULL OR config_group_id = '')
             """,
-            (group_id, primary_id if primary_id is not None else -1, h),
+            (group_id, h),
         )
-        rows_affected = cur.rowcount or 0
-        self.stats["rows_grouped"] += rows_affected
+        return int(cur.rowcount or 0)
 
-    # ------------ حلقهٔ اصلی job ------------
+    def _get_primary_state(self, cur: sqlite3.Cursor, h: str) -> Dict[str, Optional[int]]:
+        """
+        primary_count, primary_min_id (min id among primary), min_id (min id overall)
+        """
+        cur.execute(
+            """
+            SELECT
+              (SELECT MIN(id) FROM links m WHERE m.config_hash = l.config_hash) AS min_id,
+              (SELECT COUNT(*) FROM links p
+                 WHERE p.config_hash = l.config_hash
+                   AND COALESCE(p.is_config_primary, 0) = 1
+              ) AS primary_count,
+              (SELECT MIN(id) FROM links p
+                 WHERE p.config_hash = l.config_hash
+                   AND COALESCE(p.is_config_primary, 0) = 1
+              ) AS primary_min_id
+            FROM links l
+            WHERE l.config_hash = ?
+            LIMIT 1
+            """,
+            (h,),
+        )
+        row = cur.fetchone()
+        if not row:
+            return {"min_id": None, "primary_count": None, "primary_min_id": None}
+        try:
+            min_id = int(row["min_id"]) if row["min_id"] is not None else None
+        except Exception:
+            min_id = None
+        try:
+            primary_count = int(row["primary_count"]) if row["primary_count"] is not None else None
+        except Exception:
+            primary_count = None
+        try:
+            primary_min_id = int(row["primary_min_id"]) if row["primary_min_id"] is not None else None
+        except Exception:
+            primary_min_id = None
+        return {"min_id": min_id, "primary_count": primary_count, "primary_min_id": primary_min_id}
+
+    def _enforce_primary_min_id(self, cur: sqlite3.Cursor, h: str, min_id: int) -> int:
+        """
+        اولی (min_id) را primary می‌کند و بقیه را 0.
+        """
+        cur.execute(
+            """
+            UPDATE links
+            SET is_config_primary = CASE WHEN id = ? THEN 1 ELSE 0 END
+            WHERE config_hash = ?
+            """,
+            (min_id, h),
+        )
+        return int(cur.rowcount or 0)
+
+    # -------------------------------
+    # Processors
+    # -------------------------------
+
+    def _process_hash_grouping(self, cur: sqlite3.Cursor, h: str) -> None:
+        min_id = self._select_min_id_for_hash(cur, h)
+        if min_id is None:
+            return
+
+        group_id = self._find_existing_group_id_for_hash(cur, h)
+        created = False
+        if group_id is None:
+            group_id = str(min_id)
+            created = True
+
+        grouped_rows = self._fill_missing_group_id_only(cur, h, group_id)
+        if grouped_rows > 0:
+            self.stats["rows_grouped"] += grouped_rows
+        self.stats["hashes_grouped"] += 1
+        if created:
+            self.stats["groups_created"] += 1
+
+        # برای همین hash هم primary را درست کن (کم‌هزینه و مطابق انتظار)
+        st = self._get_primary_state(cur, h)
+        if st["min_id"] is None:
+            return
+        if st["primary_count"] == 1 and st["primary_min_id"] == st["min_id"]:
+            return
+        affected = self._enforce_primary_min_id(cur, h, int(st["min_id"]))
+        self.stats["hashes_primary_fixed"] += 1
+        self.stats["rows_primary_fixed"] += affected
+
+    def _process_hash_primary_fix_only(self, cur: sqlite3.Cursor, h: str) -> None:
+        st = self._get_primary_state(cur, h)
+        if st["min_id"] is None:
+            return
+        if st["primary_count"] == 1 and st["primary_min_id"] == st["min_id"]:
+            return
+        affected = self._enforce_primary_min_id(cur, h, int(st["min_id"]))
+        self.stats["hashes_primary_fixed"] += 1
+        self.stats["rows_primary_fixed"] += affected
+
+    # -------------------------------
+    # Main loop
+    # -------------------------------
 
     def update_groups(self) -> None:
-        """
-        اجرای job گروه‌بندی کانفیگ‌ها بر اساس config_hash.
-
-        تکرارش امن است:
-          - فقط روی ردیف‌هایی کار می‌کند که config_group_id خالی دارند.
-          - اجرای چندباره فقط ردیف‌های جدید (یا عقب‌افتاده) را گروه‌بندی می‌کند.
-        """
         conn = self._get_connection()
         try:
             cur = conn.cursor()
 
-            # تعداد hashهای کاندید (فقط برای آمار)
-            total_candidates = self._count_total_candidate_hashes(cur)
-            self.stats["total_candidate_hashes"] = total_candidates
-            print(f"[group_updater] total candidate hashes: {total_candidates}")
-
-            batch_index = 0
+            # Phase 1: فقط new/partial groups -> group_id fill + primary enforce
+            batch_no = 0
             while not self._stop_requested:
-                hashes = self._fetch_next_hash_batch(cur)
+                hashes = self._fetch_hashes_needing_group(cur)
                 if not hashes:
-                    print("[group_updater] no more hashes to process.")
                     break
+                batch_no += 1
+                self.stats["batches_group"] += 1
+                print(f"[group_updater] group phase batch={batch_no} hashes={len(hashes)}")
 
-                batch_index += 1
-                self.stats["batches"] += 1
-                print(f"[group_updater] batch {batch_index}: processing {len(hashes)} hashes...")
+                conn.execute("BEGIN IMMEDIATE")
+                try:
+                    for h in hashes:
+                        if self._stop_requested:
+                            break
+                        if not h:
+                            continue
+                        self._process_hash_grouping(cur, h)
+                    conn.commit()
+                except Exception:
+                    conn.rollback()
+                    raise
 
-                for h in hashes:
-                    if self._stop_requested:
-                        print("[group_updater] stop requested, breaking loop.")
-                        break
-                    if h is None or h == "":
-                        continue
-                    self.stats["hashes_seen"] += 1
-                    self._process_single_hash(cur, h)
+            # Phase 2: فقط groups کامل -> اگر اولی primary نیست، اصلاح
+            batch_no = 0
+            while not self._stop_requested:
+                hashes = self._fetch_hashes_needing_primary_fix(cur)
+                if not hashes:
+                    break
+                batch_no += 1
+                self.stats["batches_primary"] += 1
+                print(f"[group_updater] primary phase batch={batch_no} hashes={len(hashes)}")
 
-                # هر batch یک commit جدا داشته باشد
-                conn.commit()
+                conn.execute("BEGIN IMMEDIATE")
+                try:
+                    for h in hashes:
+                        if self._stop_requested:
+                            break
+                        if not h:
+                            continue
+                        self._process_hash_primary_fix_only(cur, h)
+                    conn.commit()
+                except Exception:
+                    conn.rollback()
+                    raise
 
             print(
                 "[group_updater] done. "
-                f"batches={self.stats['batches']}, "
-                f"hashes_seen={self.stats['hashes_seen']}, "
+                f"batches_group={self.stats['batches_group']}, "
+                f"hashes_grouped={self.stats['hashes_grouped']}, "
+                f"rows_grouped={self.stats['rows_grouped']}, "
                 f"groups_created={self.stats['groups_created']}, "
-                f"rows_grouped={self.stats['rows_grouped']}"
+                f"batches_primary={self.stats['batches_primary']}, "
+                f"hashes_primary_fixed={self.stats['hashes_primary_fixed']}, "
+                f"rows_primary_fixed={self.stats['rows_primary_fixed']}"
             )
-
         finally:
             conn.close()
 
 
 def main() -> None:
-    """
-    اجرای job از خط فرمان:
-      python -m xraymgr.group_updater
-    (بسته به این‌که محیط پروژه‌ات چطور راه‌اندازی شده است)
-    """
     updater = ConfigGroupUpdater(batch_size=500)
     updater.update_groups()
     print("[group_updater] stats:", updater.stats)
