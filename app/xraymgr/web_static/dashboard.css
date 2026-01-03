@@ -1,0 +1,264 @@
+body {
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    margin: 0;
+    padding: 0;
+    background: #0f172a;
+    color: #e5e7eb;
+    direction: rtl;
+}
+header {
+    background: #111827;
+    padding: 16px 24px;
+    border-bottom: 1px solid #1f2937;
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 16px;
+}
+header h1 {
+    margin: 0;
+    font-size: 20px;
+    color: #f9fafb;
+}
+header span.subtitle {
+    color: #9ca3af;
+    font-size: 13px;
+}
+main {
+    padding: 16px 24px 32px 24px;
+}
+.card {
+    background: #020617;
+    border-radius: 10px;
+    padding: 14px 16px 16px;
+    border: 1px solid #1f2937;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.45);
+}
+.card h2 {
+    margin: 0 0 10px 0;
+    font-size: 16px;
+    color: #e5e7eb;
+}
+.card small {
+    color: #6b7280;
+}
+.card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+.status-ok {
+    color: #22c55e;
+    font-size: 13px;
+}
+.status-bad {
+    color: #ef4444;
+    font-size: 13px;
+}
+select, input, textarea, button {
+    font-family: inherit;
+    font-size: 13px;
+}
+select, input, textarea {
+    background: #020617;
+    border-radius: 6px;
+    border: 1px solid #374151;
+    color: #e5e7eb;
+    padding: 6px 8px;
+    width: 100%;
+    box-sizing: border-box;
+}
+select:focus, input:focus, textarea:focus {
+    outline: 2px solid #2563eb;
+    outline-offset: 1px;
+    border-color: #2563eb;
+}
+textarea {
+    resize: vertical;
+    min-height: 150px;
+}
+/* textarea مخصوص SQL: چپ‌چین و LTR */
+#sql-input {
+    min-height: 180px;
+    direction: ltr;
+    text-align: left;
+}
+button {
+    border-radius: 6px;
+    border: none;
+    padding: 6px 10px;
+    cursor: pointer;
+    font-weight: 500;
+    background: #2563eb;
+    color: #e5e7eb;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+button.secondary {
+    background: #111827;
+    border: 1px solid #374151;
+}
+button.danger {
+    background: #b91c1c;
+}
+button:disabled {
+    opacity: 0.5;
+    cursor: default;
+}
+table {
+    border-collapse: collapse;
+    width: 100%;
+    font-size: 12px;
+    direction: ltr;
+}
+th, td {
+    border-bottom: 1px solid #1f2937;
+    padding: 4px 6px;
+    text-align: left;
+}
+th {
+    background: #020617;
+    color: #9ca3af;
+    position: sticky;
+    top: 0;
+    z-index: 1;
+}
+tr:nth-child(even) td {
+    background: rgba(15,23,42,0.6);
+}
+tr:hover td {
+    background: rgba(30,64,175,0.25);
+}
+.table-container {
+    max-height: 560px;
+    overflow: auto;
+    border-radius: 8px;
+    border: 1px solid #111827;
+    background: radial-gradient(circle at top, rgba(37,99,235,0.08), transparent 55%);
+}
+code {
+    font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    font-size: 12px;
+}
+pre {
+    font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    font-size: 12px;
+    background: #020617;
+    border-radius: 8px;
+    border: 1px solid #1f2937;
+    padding: 8px 10px;
+    max-height: 360px;
+    min-height: 220px;
+    overflow: auto;
+    white-space: pre-wrap;
+}
+.muted {
+    color: #6b7280;
+    font-size: 12px;
+}
+.pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 11px;
+    background: rgba(15,118,110,0.1);
+    color: #14b8a6;
+}
+.pill span.dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 999px;
+    background: #22c55e;
+}
+.pill.red {
+    background: rgba(185,28,28,0.2);
+    color: #f97316;
+}
+.pill.red span.dot {
+    background: #f97316;
+}
+.pill.gray {
+    background: rgba(75,85,99,0.4);
+    color: #e5e7eb;
+}
+footer {
+    margin-top: 16px;
+    font-size: 11px;
+    color: #6b7280;
+}
+.btn-row {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-top: 4px;
+    margin-bottom: 8px;
+}
+.label-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 11px;
+    color: #9ca3af;
+    margin-bottom: 4px;
+}
+.status-line {
+    font-size: 12px;
+    color: #9ca3af;
+    margin-top: 4px;
+}
+hr {
+    border: 0;
+    border-top: 1px solid #111827;
+    margin: 10px 0;
+}
+
+/* تب‌ها */
+
+.tabs {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 16px;
+    border-bottom: 1px solid #1f2937;
+}
+.tab-button {
+    border: none;
+    background: transparent;
+    padding: 8px 12px;
+    cursor: pointer;
+    font-size: 13px;
+    border-radius: 8px 8px 0 0;
+    color: #9ca3af;
+}
+.tab-button:hover {
+    background: rgba(15,23,42,0.8);
+}
+.tab-button.active {
+    background: #020617;
+    color: #e5e7eb;
+    border: 1px solid #1f2937;
+    border-bottom-color: #020617;
+}
+.tab-content {
+    display: none;
+}
+.tab-content.active {
+    display: block;
+}
+
+/* layout برای تب jobها */
+
+.jobs-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1.6fr) minmax(0, 2.2fr);
+    gap: 12px;
+}
+
+@media (max-width: 900px) {
+    .jobs-grid {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}

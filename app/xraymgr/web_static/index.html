@@ -1,0 +1,205 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+
+  <title>XrayMgr Dashboard</title>
+
+  <!-- جلوگیری از کشِ HTML (برای خود صفحه) -->
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
+
+  <!-- Cache-bust برای CSS/JS (هر بار لود صفحه، نسخه جدید) -->
+  <script>
+    (function () {
+      const v = Date.now();
+
+      const css = document.createElement("link");
+      css.rel = "stylesheet";
+      css.href = "/static/dashboard.css?v=" + v;
+      document.head.appendChild(css);
+
+      const js = document.createElement("script");
+      js.src = "/static/dashboard.js?v=" + v;
+      js.defer = true;
+      document.head.appendChild(js);
+    })();
+  </script>
+</head>
+
+<body>
+  <header>
+    <div>
+      <h1>XrayMgr Dashboard</h1>
+      <span class="subtitle">وضعیت Jobها، دیتابیس و لاگ‌ها</span>
+    </div>
+    <div class="muted">
+      SQLite: <code id="db-path">...</code>
+    </div>
+  </header>
+
+  <main>
+    <div class="tabs">
+      <button class="tab-button active" type="button" data-tab="jobs">Jobها / پردازش‌ها</button>
+      <button class="tab-button" type="button" data-tab="db">دیتابیس / SQL</button>
+    </div>
+
+    <!-- TAB: JOBS -->
+    <section id="tab-jobs" class="tab-content active">
+      <div class="jobs-grid">
+        <div class="card">
+          <div class="card-header">
+            <h2>Jobهای بک‌گراند</h2>
+            <small>کالکتور ساب‌ها + ایمپورتر raw_configs → links + آپدیتر JSON + Hash + گروپ + بکاپ دیتابیس</small>
+          </div>
+
+          <!-- Collector -->
+          <div class="status-line">
+            وضعیت کالکتور ساب‌ها:
+            <span id="collector-status" class="pill gray"><span class="dot"></span>...</span>
+          </div>
+          <div id="collector-stats" class="muted"></div>
+          <div class="btn-row">
+            <button id="collector-run-btn" type="button">شروع کالکتور</button>
+            <button id="collector-stop-btn" type="button" class="danger" disabled>توقف کالکتور</button>
+            <button id="collector-refresh-btn" type="button" class="secondary">رفرش وضعیت</button>
+          </div>
+
+          <hr />
+
+          <!-- Importer -->
+          <div class="status-line">
+            وضعیت ایمپورتر raw_configs → links:
+            <span id="importer-status" class="pill gray"><span class="dot"></span>...</span>
+          </div>
+          <div id="importer-stats" class="muted"></div>
+          <div class="btn-row">
+            <button id="importer-run-btn" type="button">شروع ایمپورتر</button>
+            <button id="importer-stop-btn" type="button" class="danger" disabled>توقف ایمپورتر</button>
+            <button id="importer-refresh-btn" type="button" class="secondary">رفرش وضعیت</button>
+          </div>
+
+          <hr />
+
+          <!-- JSON Repair -->
+          <div class="status-line">
+            وضعیت JSON Repair (invalid → repaired_url → config_json):
+            <span id="json-repair-status" class="pill gray"><span class="dot"></span>...</span>
+          </div>
+          <div id="json-repair-stats" class="muted"></div>
+          <div class="btn-row">
+            <button id="json-repair-run-btn" type="button">شروع JSON Repair</button>
+            <button id="json-repair-stop-btn" type="button" class="danger" disabled>توقف JSON Repair</button>
+            <button id="json-repair-refresh-btn" type="button" class="secondary">رفرش وضعیت</button>
+          </div>
+
+          <hr />
+
+          <!-- JSON Updater -->
+          <div class="status-line">
+            وضعیت آپدیتر JSON (links.config_json):
+            <span id="json-status" class="pill gray"><span class="dot"></span>...</span>
+          </div>
+          <div id="json-stats" class="muted"></div>
+          <div class="btn-row">
+            <button id="json-run-btn" type="button">شروع JSON updater</button>
+            <button id="json-stop-btn" type="button" class="danger" disabled>توقف JSON updater</button>
+            <button id="json-refresh-btn" type="button" class="secondary">رفرش وضعیت</button>
+          </div>
+
+          <hr />
+
+          <!-- Hash Updater -->
+          <div class="status-line">
+            وضعیت Hash updater (links.config_hash):
+            <span id="hash-status" class="pill gray"><span class="dot"></span>...</span>
+          </div>
+          <div id="hash-stats" class="muted"></div>
+          <div class="btn-row">
+            <button id="hash-run-btn" type="button">شروع Hash updater</button>
+            <button id="hash-stop-btn" type="button" class="danger" disabled>توقف Hash updater</button>
+            <button id="hash-refresh-btn" type="button" class="secondary">رفرش وضعیت</button>
+          </div>
+
+          <hr />
+
+          <!-- Group Updater -->
+          <div class="status-line">
+            وضعیت Group updater:
+            <span id="group-status" class="pill gray"><span class="dot"></span>...</span>
+          </div>
+          <div id="group-stats" class="muted"></div>
+          <div class="btn-row">
+            <button id="group-run-btn" type="button">شروع Group updater</button>
+            <button id="group-stop-btn" type="button" class="danger" disabled>توقف Group updater</button>
+            <button id="group-refresh-btn" type="button" class="secondary">رفرش وضعیت</button>
+          </div>
+
+          <hr />
+
+          <!-- Compress -->
+          <div class="status-line">
+            بکاپ فشردهٔ دیتابیس (xz):
+            <span id="compress-status" class="pill gray"><span class="dot"></span>...</span>
+          </div>
+          <div id="compress-stats" class="muted"></div>
+          <div class="btn-row">
+            <button id="compress-run-btn" type="button">ساخت بکاپ</button>
+            <button id="compress-refresh-btn" type="button" class="secondary">رفرش وضعیت</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <h2>لاگ jobهای بک‌گراند</h2>
+            <small>فقط ۲۰ خط آخر (auto-refresh هر ۱۰ ثانیه)</small>
+          </div>
+          <pre id="collector-log">(هنوز لاگی ثبت نشده است)</pre>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB: DB -->
+    <section id="tab-db" class="tab-content">
+      <div class="card">
+        <div class="card-header">
+          <h2>دیتابیس و کنسول SQL</h2>
+          <small>فقط کوئری بنویس، بزن اجرا؛ بقیه‌اش با ما.</small>
+        </div>
+
+        <div class="label-row">
+          <div>کوئری SQL</div>
+          <div class="muted">احتیاط: اینجا هر دستور SQLite (SELECT / UPDATE / DELETE / DDL) اجرا می‌شود.</div>
+        </div>
+
+        <textarea id="sql-input" placeholder="SELECT ..."></textarea>
+
+        <div class="btn-row">
+          <button id="sql-run-btn" type="button">اجرای کوئری</button>
+          <select id="sql-presets">
+            <option value="">کوئری آماده…</option>
+          </select>
+          <button id="sql-preset-apply-btn" type="button" class="secondary">اعمال</button>
+        </div>
+
+        <div id="sql-status" class="status-line"></div>
+
+        <div class="label-row" style="margin-top:10px;">
+          <div>نتیجهٔ کوئری</div>
+          <div class="muted">برای خوانایی، فقط بخشی از نتیجه نمایش داده می‌شود.</div>
+        </div>
+
+        <div id="sql-result" class="table-container">
+          <div class="muted" style="padding:10px;">نتیجه‌ای برای نمایش نیست.</div>
+        </div>
+      </div>
+    </section>
+
+    <footer>
+      مسیر دیتابیس: <code id="footer-db-path">...</code>
+    </footer>
+  </main>
+</body>
+</html>

@@ -1,0 +1,442 @@
+````markdown
+# Xray Runtime Introspection & Control (x-ui install) — CLI + gRPC Notes
+
+This document captures the exact command patterns we validated for discovering and manipulating a running Xray instance (installed/managed by **x-ui**), including:
+- locating the active Xray binary + config,
+- identifying the live gRPC API endpoint,
+- listing / adding / removing **inbounds**, **outbounds**, and **routing rules**,
+- querying **traffic statistics**,
+- using **gRPC reflection** + `grpcurl` to inspect proto schemas and perform direct RPC calls.
+
+---
+
+## 0) Conventions used in commands
+
+- `XRAY_BIN` = absolute path to the running Xray binary.
+- `API_ADDR` = `IP:PORT` of the gRPC API endpoint (from Xray `"api.listen"` or derived from runtime listening sockets).
+- All examples assume `API_ADDR` is bound to localhost (recommended).
+
+---
+
+## 1) Find the running Xray process (x-ui)
+
+### 1.1 Locate the process
+```bash
+ps -eo pid,cmd | grep -E 'xray|xray-linux' | grep -v grep
+````
+
+Example output we observed:
+
+* `873 bin/xray-linux-amd64 -c bin/config.json`
+
+### 1.2 Resolve the actual binary path and working directory
+
+```bash
+readlink -f /proc/<PID>/exe
+readlink -f /proc/<PID>/cwd
+tr '\0' ' ' < /proc/<PID>/cmdline; echo
+```
+
+Example values we observed (x-ui):
+
+* Binary: `/usr/local/x-ui/bin/xray-linux-amd64`
+* CWD: `/usr/local/x-ui`
+* Cmdline: `bin/xray-linux-amd64 -c bin/config.json`
+
+Set:
+
+```bash
+XRAY_BIN="/usr/local/x-ui/bin/xray-linux-amd64"
+```
+
+---
+
+## 2) Confirm the running version and available commands
+
+### 2.1 Version
+
+```bash
+"$XRAY_BIN" version
+```
+
+Example we observed:
+
+* `Xray 25.9.11 ... (go1.25.1 linux/amd64)`
+
+### 2.2 Command inventory
+
+```bash
+"$XRAY_BIN" help
+"$XRAY_BIN" help api
+```
+
+You should see `api` plus subcommands like:
+
+* `lsi`, `lso`, `adi`, `ado`, `rmi`, `rmo`, `adrules`, `rmrules`, `stats`, `statsquery`, `statssys`, `restartlogger`, etc.
+
+---
+
+## 3) Identify the correct gRPC API endpoint (`API_ADDR`)
+
+The `xray api` CLI defaults to `127.0.0.1:8080`, but x-ui commonly uses a different port.
+
+### 3.1 Find listening sockets owned by the Xray PID
+
+```bash
+sudo ss -lptn | grep "pid=<PID>" || ss -lptn | grep "pid=<PID>"
+```
+
+Example ports we observed for PID 873:
+
+* `127.0.0.1:10085`  (gRPC API listen, from `"api.listen"`)
+* `127.0.0.1:62789`  (dokodemo-door inbound tagged `api` in runtime config)
+* `*:8880`           (example user inbound)
+* `127.0.0.1:11111`  (other local listener)
+
+Set:
+
+```bash
+API_ADDR="127.0.0.1:10085"
+```
+
+### 3.2 Validate API connectivity (list outbounds)
+
+```bash
+"$XRAY_BIN" api lso --server="$API_ADDR" -t 3
+```
+
+---
+
+## 4) Runtime inventory: list inbounds / outbounds
+
+### 4.1 List outbounds
+
+```bash
+"$XRAY_BIN" api lso --server="$API_ADDR" -t 3
+```
+
+### 4.2 List inbounds
+
+```bash
+"$XRAY_BIN" api lsi --server="$API_ADDR" -t 3
+```
+
+Observed examples included:
+
+* Outbounds: `direct`, `blocked`, `metrics_out`
+* Inbounds: `api`, `inbound-8880`
+
+---
+
+## 5) Add / remove OUTBOUNDS using `xray api`
+
+### 5.1 Add a minimal outbound (freedom)
+
+Important: `ado` expects a JSON file with top-level `{"outbounds":[...]}`.
+
+```bash
+cat >/tmp/xray_add_out.json <<'JSON'
+{
+  "outbounds": [
+    {
+      "tag": "x_apiProbe1",
+      "protocol": "freedom",
+      "settings": {}
+    }
+  ]
+}
+JSON
+
+"$XRAY_BIN" api ado --server="$API_ADDR" -t 3 /tmp/xray_add_out.json
+```
+
+Expected output pattern:
+
+* `adding: x_apiProbe1`
+* `{}`
+
+### 5.2 Confirm it exists
+
+```bash
+"$XRAY_BIN" api lso --server="$API_ADDR" -t 3 | grep -n "x_apiProbe1" || echo "NOT_FOUND"
+```
+
+### 5.3 Remove outbound by tag
+
+```bash
+"$XRAY_BIN" api rmo --server="$API_ADDR" -t 3 x_apiProbe1
+```
+
+### 5.4 Confirm removal
+
+```bash
+"$XRAY_BIN" api lso --server="$API_ADDR" -t 3 | grep -n "x_apiProbe1" || echo "NOT_FOUND"
+```
+
+---
+
+## 6) Add / remove INBOUNDS using `xray api`
+
+### 6.1 Add a minimal SOCKS inbound on localhost
+
+```bash
+cat >/tmp/xray_add_in.json <<'JSON'
+{
+  "inbounds": [
+    {
+      "tag": "x_inProbe1",
+      "listen": "127.0.0.1",
+      "port": 10999,
+      "protocol": "socks",
+      "settings": {
+        "auth": "noauth",
+        "udp": true,
+        "ip": "127.0.0.1"
+      }
+    }
+  ]
+}
+JSON
+
+"$XRAY_BIN" api adi --server="$API_ADDR" -t 3 /tmp/xray_add_in.json
+```
+
+### 6.2 Confirm it exists
+
+```bash
+"$XRAY_BIN" api lsi --server="$API_ADDR" -t 3 | grep -n "x_inProbe1" || echo "NOT_FOUND"
+```
+
+### 6.3 Remove inbound by tag (or json file)
+
+```bash
+"$XRAY_BIN" api rmi --server="$API_ADDR" -t 3 x_inProbe1
+```
+
+### 6.4 Confirm removal
+
+```bash
+"$XRAY_BIN" api lsi --server="$API_ADDR" -t 3 | grep -n "x_inProbe1" || echo "NOT_FOUND"
+```
+
+---
+
+## 7) Add / remove ROUTING RULES using `xray api`
+
+### 7.1 Add a safe rule (matches a nonexistent inbound tag)
+
+This is intentionally no-op against the live traffic plane.
+
+```bash
+cat >/tmp/xray_add_rule.json <<'JSON'
+{
+  "routing": {
+    "rules": [
+      {
+        "type": "field",
+        "inboundTag": ["__no_such_inbound__"],
+        "outboundTag": "blocked",
+        "ruleTag": "x_ruleProbe1"
+      }
+    ]
+  }
+}
+JSON
+
+"$XRAY_BIN" api adrules --server="$API_ADDR" -t 3 -append /tmp/xray_add_rule.json
+```
+
+Expected output: `{}`
+
+### 7.2 Remove rule by ruleTag
+
+```bash
+"$XRAY_BIN" api rmrules --server="$API_ADDR" -t 3 x_ruleProbe1
+```
+
+Expected output: `{}`
+
+---
+
+## 8) Logger service: restart logger
+
+```bash
+"$XRAY_BIN" api restartlogger --server="$API_ADDR" -t 3
+```
+
+Expected output: `{}`
+
+---
+
+## 9) System stats vs traffic stats (important distinction)
+
+### 9.1 System stats (Go runtime stats)
+
+Always available when API is enabled:
+
+```bash
+"$XRAY_BIN" api statssys --server="$API_ADDR" -t 3
+```
+
+### 9.2 Traffic stats require config support
+
+To get traffic stats, the running Xray config must include:
+
+* `"api": { "services": ["StatsService", ...], "listen": "127.0.0.1:<port>" }`
+* `"stats": {}`
+* `"policy": { "levels": {... statsUser... }, "system": {... statsInbound... statsOutbound... } }`
+* For user stats specifically: users must have an `email` set in the inbound user list.
+
+In x-ui, config is commonly at:
+
+* `/usr/local/x-ui/bin/config.json`
+
+Useful quick check:
+
+```bash
+grep -nE '"api"\s*:|"services"\s*:|"StatsService"|\"stats\"\s*:|\"policy\"\s*:' /usr/local/x-ui/bin/config.json
+```
+
+### 9.3 Enumerate available counters (best first step)
+
+```bash
+"$XRAY_BIN" api statsquery --server="$API_ADDR" -t 3 -pattern ""
+```
+
+Expected naming patterns:
+
+* `user>>>[email]>>>traffic>>>uplink`
+* `user>>>[email]>>>traffic>>>downlink`
+* `inbound>>>[tag]>>>traffic>>>uplink`
+* `inbound>>>[tag]>>>traffic>>>downlink`
+
+### 9.4 Read a counter by name
+
+`xray api stats` fails with NotFound if `-name` is omitted or invalid.
+
+```bash
+"$XRAY_BIN" api stats --server="$API_ADDR" -t 3 -name "user>>>me2>>>traffic>>>downlink"
+```
+
+### 9.5 Read-and-reset a counter (windowed measurement)
+
+```bash
+"$XRAY_BIN" api stats --server="$API_ADDR" -t 3 -name "user>>>me2>>>traffic>>>downlink" -reset
+```
+
+Note: the response returns the current value, THEN resets it. A subsequent read should be small (unless traffic continues heavily).
+
+---
+
+## 10) gRPC reflection + grpcurl (direct RPC control)
+
+Reflection was enabled in our runtime (`"ReflectionService"` in `api.services`), so we can introspect proto schemas from the server.
+
+### 10.1 Verify grpcurl and list services
+
+```bash
+grpcurl -plaintext "$API_ADDR" list
+```
+
+We observed services including:
+
+* `xray.app.proxyman.command.HandlerService`
+* `xray.app.router.command.RoutingService`
+* `xray.app.stats.command.StatsService`
+* plus `v2ray.core.*` variants
+
+### 10.2 List HandlerService methods
+
+```bash
+grpcurl -plaintext "$API_ADDR" list xray.app.proxyman.command.HandlerService
+```
+
+Observed methods included:
+
+* `AddInbound`, `RemoveInbound`, `AlterInbound`
+* `AddOutbound`, `RemoveOutbound`, `AlterOutbound`
+* `ListInbounds`, `ListOutbounds`
+* user management methods
+
+### 10.3 Describe method and request types
+
+```bash
+grpcurl -plaintext "$API_ADDR" describe xray.app.proxyman.command.HandlerService.AddOutbound
+grpcurl -plaintext "$API_ADDR" describe xray.app.proxyman.command.AddOutboundRequest
+grpcurl -plaintext "$API_ADDR" describe xray.core.OutboundHandlerConfig
+grpcurl -plaintext "$API_ADDR" describe xray.common.serial.TypedMessage
+```
+
+Key schema points we confirmed:
+
+* `AddOutboundRequest { OutboundHandlerConfig outbound = 1; }`
+* `OutboundHandlerConfig { string tag; TypedMessage sender_settings; TypedMessage proxy_settings; ... }`
+* `TypedMessage { string type; bytes value; }`
+
+### 10.4 Bytes fields in JSON are Base64
+
+When calling gRPC with JSON tooling (grpcurl, Postman, etc.), protobuf `bytes` fields must be passed as Base64 strings.
+
+For minimal configs, we tested `value: ""` (empty bytes) for both sender and proxy typed messages.
+
+### 10.5 Add outbound via direct gRPC (grpcurl)
+
+```bash
+grpcurl -plaintext -d '{
+  "outbound": {
+    "tag": "x_apiProbeGrpc1",
+    "senderSettings": { "type": "xray.app.proxyman.SenderConfig", "value": "" },
+    "proxySettings":  { "type": "xray.proxy.freedom.Config",      "value": "" }
+  }
+}' "$API_ADDR" xray.app.proxyman.command.HandlerService.AddOutbound
+```
+
+Then confirm via CLI:
+
+```bash
+"$XRAY_BIN" api lso --server="$API_ADDR" -t 3 | grep -n "x_apiProbeGrpc1" || echo "NOT_FOUND"
+```
+
+### 10.6 Remove outbound via direct gRPC
+
+```bash
+grpcurl -plaintext -d '{"tag":"x_apiProbeGrpc1"}' "$API_ADDR" xray.app.proxyman.command.HandlerService.RemoveOutbound
+```
+
+Confirm removal:
+
+```bash
+"$XRAY_BIN" api lso --server="$API_ADDR" -t 3 | grep -n "x_apiProbeGrpc1" || echo "NOT_FOUND"
+```
+
+---
+
+## 11) Operational safety notes (for automation)
+
+1. Prefer localhost-only API binding (e.g., `127.0.0.1:10085`) to avoid exposing control plane.
+
+2. When experimenting with routing changes:
+
+* keep at least one “known-good” API access path (direct `"api.listen"` is ideal),
+* use no-op rules first (`__no_such_inbound__`) to validate syntax.
+
+3. For future automation (Python client):
+
+* Reflection + `grpcurl describe` outputs provide the source of truth for request/response shapes.
+* `TypedMessage.value` is raw protobuf bytes, so programmatic clients should marshal the concrete config messages and embed them in TypedMessage.
+
+---
+
+## References (upstream documentation)
+
+* XTLS/Xray official documentation: Command / CLI and `xray help` / `xray api` usage
+* XTLS/Xray official documentation: Traffic Statistics naming patterns (user/inbound/outbound)
+* Xray-core gRPC/proto schema (HandlerService / StatsService / RoutingService)
+* Protobuf JSON mapping: `bytes` fields encoded as Base64 in JSON tooling
+* grpcurl documentation: reflection-based schema browsing and JSON-to-protobuf encoding
+
+```
+
+Key external references used to align this document with upstream behavior. :contentReference[oaicite:0]{index=0}
+::contentReference[oaicite:1]{index=1}
+```
