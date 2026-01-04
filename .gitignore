@@ -50,7 +50,8 @@ Thumbs.db
 *.bak*
 *.sqlite
 *.sqlite3
-
+*..db-shm
+*..db-wal
 # --- Text files (خواستهٔ خودت؛ همه txtها نادیده می‌شن) ---
 *.txt
 
