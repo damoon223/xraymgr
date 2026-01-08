@@ -1,0 +1,819 @@
+{
+  "status": "ok",
+  "batch_id": "d8df06b271694835b7137465b6dc61af-000027",
+  "db": "/opt/xraymgr/data/xraymgr.db",
+  "count_requested": 100,
+  "count_tested": 99,
+  "parallel": 10,
+  "ports": {
+    "start": 9000,
+    "end": 9099
+  },
+  "started_at_utc": "2026-01-05T15:24:42.077052Z",
+  "finished_at_utc": "2026-01-05T15:27:21.678638Z",
+  "duration_sec": 159.602,
+  "summary": {
+    "ok": 1,
+    "fail": 98,
+    "tested": 99,
+    "db_is_alive_1_total": 515
+  },
+  "ok": [
+    {
+      "idx": 1,
+      "link_id": 21213,
+      "port": 9000,
+      "ip": "193.29.139.162",
+      "country": "Netherlands (Kingdom of the) (NL)",
+      "city": "Lelystad",
+      "isp": "Greenhost BV",
+      "duration_sec": 2.217
+    }
+  ],
+  "fail": [
+    {
+      "idx": 10,
+      "link_id": 21230,
+      "port": 9009,
+      "error": "tls",
+      "error_detail": "tls_error:SOCKSHTTPSConnectionPool(host='check-host.net', port=443): Max retries exceeded with url: /me (Caused by SSLError(SSLError(1, '[SSL: WRONG_VERSION_NUMBER] wrong version number (_ssl.c:1000)')))",
+      "duration_sec": 1.421
+    },
+    {
+      "idx": 4,
+      "link_id": 21222,
+      "port": 9003,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 2.414
+    },
+    {
+      "idx": 8,
+      "link_id": 21228,
+      "port": 9007,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 2.405
+    },
+    {
+      "idx": 9,
+      "link_id": 21229,
+      "port": 9008,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 2.414
+    },
+    {
+      "idx": 12,
+      "link_id": 21233,
+      "port": 9011,
+      "error": "tls",
+      "error_detail": "tls_error:SOCKSHTTPSConnectionPool(host='check-host.net', port=443): Max retries exceeded with url: /me (Caused by SSLError(SSLError(1, '[SSL: WRONG_VERSION_NUMBER] wrong version number (_ssl.c:1000)')))",
+      "duration_sec": 0.605
+    },
+    {
+      "idx": 11,
+      "link_id": 21232,
+      "port": 9010,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 1.609
+    },
+    {
+      "idx": 2,
+      "link_id": 21214,
+      "port": 9001,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 3.222
+    },
+    {
+      "idx": 14,
+      "link_id": 21236,
+      "port": 9013,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 1.609
+    },
+    {
+      "idx": 15,
+      "link_id": 21239,
+      "port": 9014,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 1.604
+    },
+    {
+      "idx": 16,
+      "link_id": 21243,
+      "port": 9015,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 1.604
+    },
+    {
+      "idx": 17,
+      "link_id": 21245,
+      "port": 9016,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 1.604
+    },
+    {
+      "idx": 13,
+      "link_id": 21235,
+      "port": 9012,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 2.41
+    },
+    {
+      "idx": 19,
+      "link_id": 21250,
+      "port": 9018,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 1.606
+    },
+    {
+      "idx": 21,
+      "link_id": 21252,
+      "port": 9020,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 1.605
+    },
+    {
+      "idx": 23,
+      "link_id": 21254,
+      "port": 9022,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 1.605
+    },
+    {
+      "idx": 7,
+      "link_id": 21227,
+      "port": 9006,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 7.025
+    },
+    {
+      "idx": 25,
+      "link_id": 21256,
+      "port": 9024,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 1.605
+    },
+    {
+      "idx": 26,
+      "link_id": 21257,
+      "port": 9025,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 1.604
+    },
+    {
+      "idx": 28,
+      "link_id": 21259,
+      "port": 9027,
+      "error": "tls",
+      "error_detail": "tls_error:SOCKSHTTPSConnectionPool(host='check-host.net', port=443): Max retries exceeded with url: /me (Caused by SSLError(SSLError(1, '[SSL: WRONG_VERSION_NUMBER] wrong version number (_ssl.c:1000)')))",
+      "duration_sec": 0.404
+    },
+    {
+      "idx": 24,
+      "link_id": 21255,
+      "port": 9023,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 2.807
+    },
+    {
+      "idx": 27,
+      "link_id": 21258,
+      "port": 9026,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 1.606
+    },
+    {
+      "idx": 29,
+      "link_id": 21260,
+      "port": 9028,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 1.807
+    },
+    {
+      "idx": 32,
+      "link_id": 21263,
+      "port": 9031,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 2.005
+    },
+    {
+      "idx": 34,
+      "link_id": 21267,
+      "port": 9033,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 1.604
+    },
+    {
+      "idx": 35,
+      "link_id": 21269,
+      "port": 9034,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 3.405
+    },
+    {
+      "idx": 36,
+      "link_id": 21270,
+      "port": 9035,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 1.605
+    },
+    {
+      "idx": 3,
+      "link_id": 21216,
+      "port": 9002,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 19.231
+    },
+    {
+      "idx": 38,
+      "link_id": 21276,
+      "port": 9037,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 1.605
+    },
+    {
+      "idx": 39,
+      "link_id": 21277,
+      "port": 9038,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 1.605
+    },
+    {
+      "idx": 40,
+      "link_id": 21278,
+      "port": 9039,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 1.604
+    },
+    {
+      "idx": 41,
+      "link_id": 21280,
+      "port": 9040,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 1.606
+    },
+    {
+      "idx": 42,
+      "link_id": 21281,
+      "port": 9041,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 1.605
+    },
+    {
+      "idx": 43,
+      "link_id": 21283,
+      "port": 9042,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 1.604
+    },
+    {
+      "idx": 44,
+      "link_id": 21285,
+      "port": 9043,
+      "error": "tls",
+      "error_detail": "tls_error:SOCKSHTTPSConnectionPool(host='check-host.net', port=443): Max retries exceeded with url: /me (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1000)')))",
+      "duration_sec": 0.403
+    },
+    {
+      "idx": 45,
+      "link_id": 21286,
+      "port": 9044,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 1.604
+    },
+    {
+      "idx": 46,
+      "link_id": 21287,
+      "port": 9045,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 1.604
+    },
+    {
+      "idx": 37,
+      "link_id": 21272,
+      "port": 9036,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 41.444
+    },
+    {
+      "idx": 5,
+      "link_id": 21223,
+      "port": 9004,
+      "error": "check_host_exit_nonzero",
+      "error_detail": "check_host_exit_nonzero",
+      "duration_sec": 60.099
+    },
+    {
+      "idx": 6,
+      "link_id": 21226,
+      "port": 9005,
+      "error": "check_host_exit_nonzero",
+      "error_detail": "check_host_exit_nonzero",
+      "duration_sec": 60.098
+    },
+    {
+      "idx": 48,
+      "link_id": 21291,
+      "port": 9047,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 1.603
+    },
+    {
+      "idx": 50,
+      "link_id": 21294,
+      "port": 9049,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 1.606
+    },
+    {
+      "idx": 18,
+      "link_id": 21249,
+      "port": 9017,
+      "error": "check_host_exit_nonzero",
+      "error_detail": "check_host_exit_nonzero",
+      "duration_sec": 60.087
+    },
+    {
+      "idx": 20,
+      "link_id": 21251,
+      "port": 9019,
+      "error": "check_host_exit_nonzero",
+      "error_detail": "check_host_exit_nonzero",
+      "duration_sec": 60.071
+    },
+    {
+      "idx": 22,
+      "link_id": 21253,
+      "port": 9021,
+      "error": "check_host_exit_nonzero",
+      "error_detail": "check_host_exit_nonzero",
+      "duration_sec": 60.078
+    },
+    {
+      "idx": 53,
+      "link_id": 21297,
+      "port": 9052,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 1.606
+    },
+    {
+      "idx": 54,
+      "link_id": 21298,
+      "port": 9053,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 1.605
+    },
+    {
+      "idx": 55,
+      "link_id": 21299,
+      "port": 9054,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 1.604
+    },
+    {
+      "idx": 57,
+      "link_id": 21304,
+      "port": 9056,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 1.603
+    },
+    {
+      "idx": 59,
+      "link_id": 21306,
+      "port": 9058,
+      "error": "tls",
+      "error_detail": "tls_error:SOCKSHTTPSConnectionPool(host='check-host.net', port=443): Max retries exceeded with url: /me (Caused by SSLError(SSLError(1, '[SSL: WRONG_VERSION_NUMBER] wrong version number (_ssl.c:1000)')))",
+      "duration_sec": 0.403
+    },
+    {
+      "idx": 58,
+      "link_id": 21305,
+      "port": 9057,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 1.606
+    },
+    {
+      "idx": 30,
+      "link_id": 21261,
+      "port": 9029,
+      "error": "check_host_exit_nonzero",
+      "error_detail": "check_host_exit_nonzero",
+      "duration_sec": 60.071
+    },
+    {
+      "idx": 31,
+      "link_id": 21262,
+      "port": 9030,
+      "error": "check_host_exit_nonzero",
+      "error_detail": "check_host_exit_nonzero",
+      "duration_sec": 60.069
+    },
+    {
+      "idx": 60,
+      "link_id": 21307,
+      "port": 9059,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 1.605
+    },
+    {
+      "idx": 62,
+      "link_id": 21309,
+      "port": 9061,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 1.405
+    },
+    {
+      "idx": 61,
+      "link_id": 21308,
+      "port": 9060,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 1.608
+    },
+    {
+      "idx": 33,
+      "link_id": 21266,
+      "port": 9032,
+      "error": "check_host_exit_nonzero",
+      "error_detail": "check_host_exit_nonzero",
+      "duration_sec": 60.069
+    },
+    {
+      "idx": 66,
+      "link_id": 21314,
+      "port": 9065,
+      "error": "tls",
+      "error_detail": "tls_error:SOCKSHTTPSConnectionPool(host='check-host.net', port=443): Max retries exceeded with url: /me (Caused by SSLError(SSLError(1, '[SSL: WRONG_VERSION_NUMBER] wrong version number (_ssl.c:1000)')))",
+      "duration_sec": 0.405
+    },
+    {
+      "idx": 63,
+      "link_id": 21310,
+      "port": 9062,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 1.606
+    },
+    {
+      "idx": 65,
+      "link_id": 21312,
+      "port": 9064,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 1.806
+    },
+    {
+      "idx": 69,
+      "link_id": 21318,
+      "port": 9068,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 1.606
+    },
+    {
+      "idx": 68,
+      "link_id": 21317,
+      "port": 9067,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 1.805
+    },
+    {
+      "idx": 64,
+      "link_id": 21311,
+      "port": 9063,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 2.611
+    },
+    {
+      "idx": 70,
+      "link_id": 21319,
+      "port": 9069,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 1.605
+    },
+    {
+      "idx": 71,
+      "link_id": 21321,
+      "port": 9070,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 1.608
+    },
+    {
+      "idx": 72,
+      "link_id": 21324,
+      "port": 9071,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 1.603
+    },
+    {
+      "idx": 47,
+      "link_id": 21289,
+      "port": 9046,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 41.254
+    },
+    {
+      "idx": 74,
+      "link_id": 21327,
+      "port": 9073,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 1.605
+    },
+    {
+      "idx": 78,
+      "link_id": 21337,
+      "port": 9077,
+      "error": "tls",
+      "error_detail": "tls_error:SOCKSHTTPSConnectionPool(host='check-host.net', port=443): Max retries exceeded with url: /me (Caused by SSLError(SSLError(1, '[SSL: WRONG_VERSION_NUMBER] wrong version number (_ssl.c:1000)')))",
+      "duration_sec": 0.402
+    },
+    {
+      "idx": 75,
+      "link_id": 21328,
+      "port": 9074,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 1.605
+    },
+    {
+      "idx": 76,
+      "link_id": 21332,
+      "port": 9075,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 1.806
+    },
+    {
+      "idx": 77,
+      "link_id": 21335,
+      "port": 9076,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 1.604
+    },
+    {
+      "idx": 81,
+      "link_id": 21342,
+      "port": 9080,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 1.603
+    },
+    {
+      "idx": 82,
+      "link_id": 21343,
+      "port": 9081,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 1.605
+    },
+    {
+      "idx": 83,
+      "link_id": 21344,
+      "port": 9082,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 1.404
+    },
+    {
+      "idx": 79,
+      "link_id": 21339,
+      "port": 9078,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 3.61
+    },
+    {
+      "idx": 84,
+      "link_id": 21345,
+      "port": 9083,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 1.609
+    },
+    {
+      "idx": 85,
+      "link_id": 21346,
+      "port": 9084,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 1.604
+    },
+    {
+      "idx": 88,
+      "link_id": 21349,
+      "port": 9087,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 1.407
+    },
+    {
+      "idx": 87,
+      "link_id": 21348,
+      "port": 9086,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 1.607
+    },
+    {
+      "idx": 89,
+      "link_id": 21352,
+      "port": 9088,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 1.405
+    },
+    {
+      "idx": 90,
+      "link_id": 21353,
+      "port": 9089,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 1.605
+    },
+    {
+      "idx": 91,
+      "link_id": 21354,
+      "port": 9090,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 1.606
+    },
+    {
+      "idx": 92,
+      "link_id": 21357,
+      "port": 9091,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 1.604
+    },
+    {
+      "idx": 93,
+      "link_id": 21358,
+      "port": 9092,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 1.605
+    },
+    {
+      "idx": 94,
+      "link_id": 21360,
+      "port": 9093,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 1.606
+    },
+    {
+      "idx": 97,
+      "link_id": 21363,
+      "port": 9096,
+      "error": "tls",
+      "error_detail": "tls_error:SOCKSHTTPSConnectionPool(host='check-host.net', port=443): Max retries exceeded with url: /me (Caused by SSLError(SSLError(1, '[SSL: WRONG_VERSION_NUMBER] wrong version number (_ssl.c:1000)')))",
+      "duration_sec": 0.404
+    },
+    {
+      "idx": 96,
+      "link_id": 21362,
+      "port": 9095,
+      "error": "tls",
+      "error_detail": "tls_error:SOCKSHTTPSConnectionPool(host='check-host.net', port=443): Max retries exceeded with url: /me (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1000)')))",
+      "duration_sec": 1.406
+    },
+    {
+      "idx": 98,
+      "link_id": 21364,
+      "port": 9097,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 1.808
+    },
+    {
+      "idx": 73,
+      "link_id": 21326,
+      "port": 9072,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 19.032
+    },
+    {
+      "idx": 67,
+      "link_id": 21316,
+      "port": 9066,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 41.453
+    },
+    {
+      "idx": 80,
+      "link_id": 21340,
+      "port": 9079,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 41.447
+    },
+    {
+      "idx": 49,
+      "link_id": 21292,
+      "port": 9048,
+      "error": "check_host_exit_nonzero",
+      "error_detail": "check_host_exit_nonzero",
+      "duration_sec": 60.083
+    },
+    {
+      "idx": 51,
+      "link_id": 21295,
+      "port": 9050,
+      "error": "check_host_exit_nonzero",
+      "error_detail": "check_host_exit_nonzero",
+      "duration_sec": 60.077
+    },
+    {
+      "idx": 52,
+      "link_id": 21296,
+      "port": 9051,
+      "error": "check_host_exit_nonzero",
+      "error_detail": "check_host_exit_nonzero",
+      "duration_sec": 60.075
+    },
+    {
+      "idx": 56,
+      "link_id": 21303,
+      "port": 9055,
+      "error": "check_host_exit_nonzero",
+      "error_detail": "check_host_exit_nonzero",
+      "duration_sec": 60.078
+    },
+    {
+      "idx": 95,
+      "link_id": 21361,
+      "port": 9094,
+      "error": "check_host_exit_nonzero",
+      "error_detail": "check_host_exit_nonzero",
+      "duration_sec": 60.079
+    },
+    {
+      "idx": 99,
+      "link_id": 21365,
+      "port": 9098,
+      "error": "check_host_exit_nonzero",
+      "error_detail": "check_host_exit_nonzero",
+      "duration_sec": 60.073
+    },
+    {
+      "idx": 100,
+      "link_id": 21366,
+      "port": 9099,
+      "error": "check_host_exit_nonzero",
+      "error_detail": "check_host_exit_nonzero",
+      "duration_sec": 60.066
+    }
+  ]
+}

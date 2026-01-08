@@ -1,0 +1,816 @@
+{
+  "status": "ok",
+  "batch_id": "3c574343b7604dba9f64d5a67550927f-000144",
+  "db": "/opt/xraymgr/data/xraymgr.db",
+  "count_requested": 100,
+  "count_tested": 99,
+  "parallel": 10,
+  "ports": {
+    "start": 9000,
+    "end": 9099
+  },
+  "started_at_utc": "2026-01-06T04:36:05.274438Z",
+  "finished_at_utc": "2026-01-06T04:38:43.399960Z",
+  "duration_sec": 158.126,
+  "summary": {
+    "ok": 0,
+    "fail": 99,
+    "tested": 99,
+    "db_is_alive_1_total": 705
+  },
+  "ok": [],
+  "fail": [
+    {
+      "idx": 5,
+      "link_id": 51011,
+      "port": 9004,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 3.414
+    },
+    {
+      "idx": 2,
+      "link_id": 51008,
+      "port": 9001,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 3.418
+    },
+    {
+      "idx": 4,
+      "link_id": 51010,
+      "port": 9003,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 3.419
+    },
+    {
+      "idx": 7,
+      "link_id": 51015,
+      "port": 9006,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 3.408
+    },
+    {
+      "idx": 9,
+      "link_id": 51019,
+      "port": 9008,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 3.422
+    },
+    {
+      "idx": 1,
+      "link_id": 51007,
+      "port": 9000,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 3.618
+    },
+    {
+      "idx": 13,
+      "link_id": 51025,
+      "port": 9012,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 2.806
+    },
+    {
+      "idx": 14,
+      "link_id": 51026,
+      "port": 9013,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 2.807
+    },
+    {
+      "idx": 16,
+      "link_id": 51030,
+      "port": 9015,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 2.81
+    },
+    {
+      "idx": 15,
+      "link_id": 51027,
+      "port": 9014,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 3.01
+    },
+    {
+      "idx": 12,
+      "link_id": 51023,
+      "port": 9011,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 3.208
+    },
+    {
+      "idx": 11,
+      "link_id": 51021,
+      "port": 9010,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 4.213
+    },
+    {
+      "idx": 18,
+      "link_id": 51032,
+      "port": 9017,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 2.608
+    },
+    {
+      "idx": 19,
+      "link_id": 51033,
+      "port": 9018,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 2.805
+    },
+    {
+      "idx": 21,
+      "link_id": 51037,
+      "port": 9020,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 2.808
+    },
+    {
+      "idx": 17,
+      "link_id": 51031,
+      "port": 9016,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 3.409
+    },
+    {
+      "idx": 24,
+      "link_id": 51042,
+      "port": 9023,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 2.608
+    },
+    {
+      "idx": 25,
+      "link_id": 51043,
+      "port": 9024,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 2.606
+    },
+    {
+      "idx": 26,
+      "link_id": 51044,
+      "port": 9025,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 4.007
+    },
+    {
+      "idx": 20,
+      "link_id": 51036,
+      "port": 9019,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 7.211
+    },
+    {
+      "idx": 27,
+      "link_id": 51045,
+      "port": 9026,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 2.606
+    },
+    {
+      "idx": 28,
+      "link_id": 51047,
+      "port": 9027,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 3.008
+    },
+    {
+      "idx": 30,
+      "link_id": 51050,
+      "port": 9029,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 2.607
+    },
+    {
+      "idx": 31,
+      "link_id": 51052,
+      "port": 9030,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 2.605
+    },
+    {
+      "idx": 32,
+      "link_id": 51056,
+      "port": 9031,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 2.604
+    },
+    {
+      "idx": 33,
+      "link_id": 51057,
+      "port": 9032,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 2.605
+    },
+    {
+      "idx": 34,
+      "link_id": 51058,
+      "port": 9033,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 2.605
+    },
+    {
+      "idx": 35,
+      "link_id": 51059,
+      "port": 9034,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 3.004
+    },
+    {
+      "idx": 36,
+      "link_id": 51060,
+      "port": 9035,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 2.604
+    },
+    {
+      "idx": 37,
+      "link_id": 51061,
+      "port": 9036,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 2.404
+    },
+    {
+      "idx": 38,
+      "link_id": 51062,
+      "port": 9037,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 2.604
+    },
+    {
+      "idx": 40,
+      "link_id": 51065,
+      "port": 9039,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 2.605
+    },
+    {
+      "idx": 42,
+      "link_id": 51068,
+      "port": 9041,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 2.605
+    },
+    {
+      "idx": 43,
+      "link_id": 51071,
+      "port": 9042,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 2.604
+    },
+    {
+      "idx": 39,
+      "link_id": 51064,
+      "port": 9038,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 6.609
+    },
+    {
+      "idx": 44,
+      "link_id": 51072,
+      "port": 9043,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 2.605
+    },
+    {
+      "idx": 45,
+      "link_id": 51073,
+      "port": 9044,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 2.605
+    },
+    {
+      "idx": 46,
+      "link_id": 51075,
+      "port": 9045,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 2.607
+    },
+    {
+      "idx": 47,
+      "link_id": 51076,
+      "port": 9046,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 2.605
+    },
+    {
+      "idx": 48,
+      "link_id": 51077,
+      "port": 9047,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 2.605
+    },
+    {
+      "idx": 49,
+      "link_id": 51078,
+      "port": 9048,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 2.605
+    },
+    {
+      "idx": 50,
+      "link_id": 51079,
+      "port": 9049,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 2.604
+    },
+    {
+      "idx": 51,
+      "link_id": 51080,
+      "port": 9050,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 2.604
+    },
+    {
+      "idx": 52,
+      "link_id": 51082,
+      "port": 9051,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 2.605
+    },
+    {
+      "idx": 53,
+      "link_id": 51083,
+      "port": 9052,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 2.604
+    },
+    {
+      "idx": 54,
+      "link_id": 51084,
+      "port": 9053,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 2.605
+    },
+    {
+      "idx": 55,
+      "link_id": 51085,
+      "port": 9054,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 3.005
+    },
+    {
+      "idx": 57,
+      "link_id": 51088,
+      "port": 9056,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 2.404
+    },
+    {
+      "idx": 3,
+      "link_id": 51009,
+      "port": 9002,
+      "error": "check_host_exit_nonzero",
+      "error_detail": "check_host_exit_nonzero",
+      "duration_sec": 60.092
+    },
+    {
+      "idx": 6,
+      "link_id": 51012,
+      "port": 9005,
+      "error": "check_host_exit_nonzero",
+      "error_detail": "check_host_exit_nonzero",
+      "duration_sec": 60.088
+    },
+    {
+      "idx": 8,
+      "link_id": 51016,
+      "port": 9007,
+      "error": "check_host_exit_nonzero",
+      "error_detail": "check_host_exit_nonzero",
+      "duration_sec": 60.092
+    },
+    {
+      "idx": 10,
+      "link_id": 51020,
+      "port": 9009,
+      "error": "check_host_exit_nonzero",
+      "error_detail": "check_host_exit_nonzero",
+      "duration_sec": 60.098
+    },
+    {
+      "idx": 60,
+      "link_id": 51095,
+      "port": 9059,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 2.808
+    },
+    {
+      "idx": 62,
+      "link_id": 51097,
+      "port": 9061,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 2.805
+    },
+    {
+      "idx": 63,
+      "link_id": 51098,
+      "port": 9062,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 2.809
+    },
+    {
+      "idx": 61,
+      "link_id": 51096,
+      "port": 9060,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 3.411
+    },
+    {
+      "idx": 66,
+      "link_id": 51102,
+      "port": 9065,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 2.604
+    },
+    {
+      "idx": 64,
+      "link_id": 51100,
+      "port": 9063,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 2.808
+    },
+    {
+      "idx": 67,
+      "link_id": 51104,
+      "port": 9066,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 2.606
+    },
+    {
+      "idx": 22,
+      "link_id": 51038,
+      "port": 9021,
+      "error": "check_host_exit_nonzero",
+      "error_detail": "check_host_exit_nonzero",
+      "duration_sec": 60.076
+    },
+    {
+      "idx": 68,
+      "link_id": 51105,
+      "port": 9067,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 2.607
+    },
+    {
+      "idx": 70,
+      "link_id": 51107,
+      "port": 9069,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 2.605
+    },
+    {
+      "idx": 23,
+      "link_id": 51039,
+      "port": 9022,
+      "error": "check_host_exit_nonzero",
+      "error_detail": "check_host_exit_nonzero",
+      "duration_sec": 60.077
+    },
+    {
+      "idx": 72,
+      "link_id": 51112,
+      "port": 9071,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 2.605
+    },
+    {
+      "idx": 73,
+      "link_id": 51114,
+      "port": 9072,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 2.605
+    },
+    {
+      "idx": 74,
+      "link_id": 51117,
+      "port": 9073,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 2.606
+    },
+    {
+      "idx": 75,
+      "link_id": 51118,
+      "port": 9074,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 2.604
+    },
+    {
+      "idx": 29,
+      "link_id": 51049,
+      "port": 9028,
+      "error": "check_host_exit_nonzero",
+      "error_detail": "check_host_exit_nonzero",
+      "duration_sec": 60.078
+    },
+    {
+      "idx": 76,
+      "link_id": 51122,
+      "port": 9075,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 2.604
+    },
+    {
+      "idx": 77,
+      "link_id": 51123,
+      "port": 9076,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 2.806
+    },
+    {
+      "idx": 78,
+      "link_id": 51124,
+      "port": 9077,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 2.605
+    },
+    {
+      "idx": 79,
+      "link_id": 51127,
+      "port": 9078,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 2.605
+    },
+    {
+      "idx": 80,
+      "link_id": 51128,
+      "port": 9079,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 2.605
+    },
+    {
+      "idx": 81,
+      "link_id": 51129,
+      "port": 9080,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 2.607
+    },
+    {
+      "idx": 82,
+      "link_id": 51130,
+      "port": 9081,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 2.607
+    },
+    {
+      "idx": 56,
+      "link_id": 51086,
+      "port": 9055,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 42.448
+    },
+    {
+      "idx": 83,
+      "link_id": 51131,
+      "port": 9082,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 2.604
+    },
+    {
+      "idx": 85,
+      "link_id": 51135,
+      "port": 9084,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 2.607
+    },
+    {
+      "idx": 84,
+      "link_id": 51132,
+      "port": 9083,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 4.011
+    },
+    {
+      "idx": 86,
+      "link_id": 51136,
+      "port": 9085,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 2.607
+    },
+    {
+      "idx": 87,
+      "link_id": 51137,
+      "port": 9086,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 2.606
+    },
+    {
+      "idx": 88,
+      "link_id": 51140,
+      "port": 9087,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 2.606
+    },
+    {
+      "idx": 89,
+      "link_id": 51141,
+      "port": 9088,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 2.607
+    },
+    {
+      "idx": 90,
+      "link_id": 51143,
+      "port": 9089,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 2.808
+    },
+    {
+      "idx": 91,
+      "link_id": 51144,
+      "port": 9090,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 2.607
+    },
+    {
+      "idx": 92,
+      "link_id": 51146,
+      "port": 9091,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 2.605
+    },
+    {
+      "idx": 93,
+      "link_id": 51148,
+      "port": 9092,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 2.607
+    },
+    {
+      "idx": 96,
+      "link_id": 51151,
+      "port": 9095,
+      "error": "tls",
+      "error_detail": "tls_error:SOCKSHTTPSConnectionPool(host='check-host.net', port=443): Max retries exceeded with url: /me (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1000)')))",
+      "duration_sec": 0.402
+    },
+    {
+      "idx": 94,
+      "link_id": 51149,
+      "port": 9093,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 2.606
+    },
+    {
+      "idx": 95,
+      "link_id": 51150,
+      "port": 9094,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 2.61
+    },
+    {
+      "idx": 99,
+      "link_id": 51154,
+      "port": 9098,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 2.607
+    },
+    {
+      "idx": 98,
+      "link_id": 51153,
+      "port": 9097,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 2.805
+    },
+    {
+      "idx": 100,
+      "link_id": 51155,
+      "port": 9099,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 2.605
+    },
+    {
+      "idx": 58,
+      "link_id": 51091,
+      "port": 9057,
+      "error": "check_host_exit_nonzero",
+      "error_detail": "check_host_exit_nonzero",
+      "duration_sec": 60.089
+    },
+    {
+      "idx": 59,
+      "link_id": 51093,
+      "port": 9058,
+      "error": "check_host_exit_nonzero",
+      "error_detail": "check_host_exit_nonzero",
+      "duration_sec": 60.079
+    },
+    {
+      "idx": 65,
+      "link_id": 51101,
+      "port": 9064,
+      "error": "check_host_exit_nonzero",
+      "error_detail": "check_host_exit_nonzero",
+      "duration_sec": 60.075
+    },
+    {
+      "idx": 69,
+      "link_id": 51106,
+      "port": 9068,
+      "error": "check_host_exit_nonzero",
+      "error_detail": "check_host_exit_nonzero",
+      "duration_sec": 60.074
+    },
+    {
+      "idx": 71,
+      "link_id": 51111,
+      "port": 9070,
+      "error": "check_host_exit_nonzero",
+      "error_detail": "check_host_exit_nonzero",
+      "duration_sec": 60.075
+    },
+    {
+      "idx": 97,
+      "link_id": 51152,
+      "port": 9096,
+      "error": "check_host_exit_nonzero",
+      "error_detail": "check_host_exit_nonzero",
+      "duration_sec": 60.077
+    }
+  ]
+}

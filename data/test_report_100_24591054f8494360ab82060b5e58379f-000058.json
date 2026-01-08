@@ -1,0 +1,499 @@
+{
+  "status": "ok",
+  "batch_id": "24591054f8494360ab82060b5e58379f-000058",
+  "db": "/opt/xraymgr/data/xraymgr.db",
+  "count_requested": 100,
+  "count_tested": 59,
+  "parallel": 10,
+  "ports": {
+    "start": 9000,
+    "end": 9099
+  },
+  "started_at_utc": "2026-01-06T07:38:40.506012Z",
+  "finished_at_utc": "2026-01-06T07:40:09.286022Z",
+  "duration_sec": 88.78,
+  "summary": {
+    "ok": 1,
+    "fail": 58,
+    "tested": 59,
+    "db_is_alive_1_total": 729
+  },
+  "ok": [
+    {
+      "idx": 66,
+      "link_id": 62962,
+      "port": 9065,
+      "ip": "77.220.214.135",
+      "country": "Netherlands (Kingdom of the) (NL)",
+      "city": "Lelystad",
+      "isp": "Zomro B.V. (Podaon SIA)",
+      "duration_sec": 1.405
+    }
+  ],
+  "fail": [
+    {
+      "idx": 7,
+      "link_id": 62870,
+      "port": 9006,
+      "error": "tls",
+      "error_detail": "tls_error:SOCKSHTTPSConnectionPool(host='check-host.net', port=443): Max retries exceeded with url: /me (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1000)')))",
+      "duration_sec": 1.409
+    },
+    {
+      "idx": 14,
+      "link_id": 62880,
+      "port": 9013,
+      "error": "tls",
+      "error_detail": "tls_error:SOCKSHTTPSConnectionPool(host='check-host.net', port=443): Max retries exceeded with url: /me (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1000)')))",
+      "duration_sec": 1.415
+    },
+    {
+      "idx": 16,
+      "link_id": 62883,
+      "port": 9015,
+      "error": "tls",
+      "error_detail": "tls_error:SOCKSHTTPSConnectionPool(host='check-host.net', port=443): Max retries exceeded with url: /me (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1000)')))",
+      "duration_sec": 0.804
+    },
+    {
+      "idx": 10,
+      "link_id": 62873,
+      "port": 9009,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 3.216
+    },
+    {
+      "idx": 1,
+      "link_id": 62863,
+      "port": 9000,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 3.415
+    },
+    {
+      "idx": 4,
+      "link_id": 62866,
+      "port": 9003,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 3.423
+    },
+    {
+      "idx": 13,
+      "link_id": 62878,
+      "port": 9012,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 3.416
+    },
+    {
+      "idx": 6,
+      "link_id": 62868,
+      "port": 9005,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 3.619
+    },
+    {
+      "idx": 12,
+      "link_id": 62877,
+      "port": 9011,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 3.62
+    },
+    {
+      "idx": 5,
+      "link_id": 62867,
+      "port": 9004,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 3.814
+    },
+    {
+      "idx": 21,
+      "link_id": 62890,
+      "port": 9020,
+      "error": "tls",
+      "error_detail": "tls_error:SOCKSHTTPSConnectionPool(host='check-host.net', port=443): Max retries exceeded with url: /me (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1000)')))",
+      "duration_sec": 0.802
+    },
+    {
+      "idx": 15,
+      "link_id": 62881,
+      "port": 9014,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 3.01
+    },
+    {
+      "idx": 20,
+      "link_id": 62889,
+      "port": 9019,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 2.809
+    },
+    {
+      "idx": 23,
+      "link_id": 62894,
+      "port": 9022,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 3.009
+    },
+    {
+      "idx": 28,
+      "link_id": 62901,
+      "port": 9027,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 3.007
+    },
+    {
+      "idx": 31,
+      "link_id": 62908,
+      "port": 9030,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 3.008
+    },
+    {
+      "idx": 22,
+      "link_id": 62892,
+      "port": 9021,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 3.414
+    },
+    {
+      "idx": 36,
+      "link_id": 62913,
+      "port": 9035,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 2.815
+    },
+    {
+      "idx": 27,
+      "link_id": 62900,
+      "port": 9026,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 3.617
+    },
+    {
+      "idx": 37,
+      "link_id": 62918,
+      "port": 9036,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 2.804
+    },
+    {
+      "idx": 41,
+      "link_id": 62923,
+      "port": 9040,
+      "error": "tls",
+      "error_detail": "tls_error:SOCKSHTTPSConnectionPool(host='check-host.net', port=443): Max retries exceeded with url: /me (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1000)')))",
+      "duration_sec": 0.605
+    },
+    {
+      "idx": 38,
+      "link_id": 62919,
+      "port": 9037,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 2.608
+    },
+    {
+      "idx": 40,
+      "link_id": 62921,
+      "port": 9039,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 2.609
+    },
+    {
+      "idx": 35,
+      "link_id": 62912,
+      "port": 9034,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 5.416
+    },
+    {
+      "idx": 45,
+      "link_id": 62927,
+      "port": 9044,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 3.009
+    },
+    {
+      "idx": 49,
+      "link_id": 62933,
+      "port": 9048,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 2.803
+    },
+    {
+      "idx": 51,
+      "link_id": 62937,
+      "port": 9050,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 2.806
+    },
+    {
+      "idx": 50,
+      "link_id": 62935,
+      "port": 9049,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 3.008
+    },
+    {
+      "idx": 53,
+      "link_id": 62941,
+      "port": 9052,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 2.607
+    },
+    {
+      "idx": 55,
+      "link_id": 62943,
+      "port": 9054,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 2.611
+    },
+    {
+      "idx": 56,
+      "link_id": 62945,
+      "port": 9055,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 2.606
+    },
+    {
+      "idx": 57,
+      "link_id": 62946,
+      "port": 9056,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 2.606
+    },
+    {
+      "idx": 58,
+      "link_id": 62947,
+      "port": 9057,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 2.804
+    },
+    {
+      "idx": 70,
+      "link_id": 62969,
+      "port": 9069,
+      "error": "tls",
+      "error_detail": "tls_error:SOCKSHTTPSConnectionPool(host='check-host.net', port=443): Max retries exceeded with url: /me (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1000)')))",
+      "duration_sec": 0.403
+    },
+    {
+      "idx": 63,
+      "link_id": 62957,
+      "port": 9062,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 2.606
+    },
+    {
+      "idx": 64,
+      "link_id": 62959,
+      "port": 9063,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 2.608
+    },
+    {
+      "idx": 65,
+      "link_id": 62961,
+      "port": 9064,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 2.605
+    },
+    {
+      "idx": 72,
+      "link_id": 62971,
+      "port": 9071,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 2.404
+    },
+    {
+      "idx": 73,
+      "link_id": 62972,
+      "port": 9072,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 2.605
+    },
+    {
+      "idx": 74,
+      "link_id": 62973,
+      "port": 9073,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 2.605
+    },
+    {
+      "idx": 77,
+      "link_id": 62978,
+      "port": 9076,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 2.605
+    },
+    {
+      "idx": 52,
+      "link_id": 62938,
+      "port": 9051,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 10.015
+    },
+    {
+      "idx": 85,
+      "link_id": 62991,
+      "port": 9084,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 2.805
+    },
+    {
+      "idx": 88,
+      "link_id": 62998,
+      "port": 9087,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 2.405
+    },
+    {
+      "idx": 90,
+      "link_id": 63000,
+      "port": 9089,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 2.608
+    },
+    {
+      "idx": 92,
+      "link_id": 63005,
+      "port": 9091,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 2.605
+    },
+    {
+      "idx": 93,
+      "link_id": 63007,
+      "port": 9092,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 2.606
+    },
+    {
+      "idx": 97,
+      "link_id": 63014,
+      "port": 9096,
+      "error": "tls",
+      "error_detail": "tls_error:SOCKSHTTPSConnectionPool(host='check-host.net', port=443): Max retries exceeded with url: /me (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1000)')))",
+      "duration_sec": 0.402
+    },
+    {
+      "idx": 99,
+      "link_id": 63018,
+      "port": 9098,
+      "error": "tls",
+      "error_detail": "tls_error:SOCKSHTTPSConnectionPool(host='check-host.net', port=443): Max retries exceeded with url: /me (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1000)')))",
+      "duration_sec": 0.402
+    },
+    {
+      "idx": 98,
+      "link_id": 63015,
+      "port": 9097,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 2.405
+    },
+    {
+      "idx": 76,
+      "link_id": 62977,
+      "port": 9075,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 42.455
+    },
+    {
+      "idx": 3,
+      "link_id": 62865,
+      "port": 9002,
+      "error": "check_host_exit_nonzero",
+      "error_detail": "check_host_exit_nonzero",
+      "duration_sec": 60.094
+    },
+    {
+      "idx": 42,
+      "link_id": 62924,
+      "port": 9041,
+      "error": "check_host_exit_nonzero",
+      "error_detail": "check_host_exit_nonzero",
+      "duration_sec": 60.085
+    },
+    {
+      "idx": 47,
+      "link_id": 62930,
+      "port": 9046,
+      "error": "check_host_exit_nonzero",
+      "error_detail": "check_host_exit_nonzero",
+      "duration_sec": 60.074
+    },
+    {
+      "idx": 59,
+      "link_id": 62948,
+      "port": 9058,
+      "error": "check_host_exit_nonzero",
+      "error_detail": "check_host_exit_nonzero",
+      "duration_sec": 60.078
+    },
+    {
+      "idx": 80,
+      "link_id": 62981,
+      "port": 9079,
+      "error": "check_host_exit_nonzero",
+      "error_detail": "check_host_exit_nonzero",
+      "duration_sec": 60.082
+    },
+    {
+      "idx": 83,
+      "link_id": 62985,
+      "port": 9082,
+      "error": "check_host_exit_nonzero",
+      "error_detail": "check_host_exit_nonzero",
+      "duration_sec": 60.076
+    },
+    {
+      "idx": 91,
+      "link_id": 63001,
+      "port": 9090,
+      "error": "check_host_exit_nonzero",
+      "error_detail": "check_host_exit_nonzero",
+      "duration_sec": 60.082
+    }
+  ]
+}

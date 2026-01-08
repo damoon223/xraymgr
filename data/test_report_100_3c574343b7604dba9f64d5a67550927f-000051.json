@@ -1,0 +1,291 @@
+{
+  "status": "ok",
+  "batch_id": "3c574343b7604dba9f64d5a67550927f-000051",
+  "db": "/opt/xraymgr/data/xraymgr.db",
+  "count_requested": 100,
+  "count_tested": 33,
+  "parallel": 10,
+  "ports": {
+    "start": 9000,
+    "end": 9099
+  },
+  "started_at_utc": "2026-01-06T00:25:15.484801Z",
+  "finished_at_utc": "2026-01-06T00:28:22.088287Z",
+  "duration_sec": 186.603,
+  "summary": {
+    "ok": 1,
+    "fail": 32,
+    "tested": 33,
+    "db_is_alive_1_total": 595
+  },
+  "ok": [
+    {
+      "idx": 1,
+      "link_id": 35065,
+      "port": 9000,
+      "ip": "193.29.139.162",
+      "country": "Netherlands (Kingdom of the) (NL)",
+      "city": "Lelystad",
+      "isp": "Greenhost BV",
+      "duration_sec": 2.017
+    }
+  ],
+  "fail": [
+    {
+      "idx": 4,
+      "link_id": 35069,
+      "port": 9003,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 2.215
+    },
+    {
+      "idx": 9,
+      "link_id": 35075,
+      "port": 9008,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 2.413
+    },
+    {
+      "idx": 2,
+      "link_id": 35067,
+      "port": 9001,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 3.211
+    },
+    {
+      "idx": 33,
+      "link_id": 35106,
+      "port": 9032,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 2.006
+    },
+    {
+      "idx": 38,
+      "link_id": 35111,
+      "port": 9037,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 1.604
+    },
+    {
+      "idx": 12,
+      "link_id": 35078,
+      "port": 9011,
+      "error": "check_host_exit_nonzero",
+      "error_detail": "check_host_exit_nonzero",
+      "duration_sec": 60.069
+    },
+    {
+      "idx": 5,
+      "link_id": 35070,
+      "port": 9004,
+      "error": "check_host_exit_nonzero",
+      "error_detail": "check_host_exit_nonzero",
+      "duration_sec": 60.081
+    },
+    {
+      "idx": 20,
+      "link_id": 35088,
+      "port": 9019,
+      "error": "check_host_exit_nonzero",
+      "error_detail": "check_host_exit_nonzero",
+      "duration_sec": 60.084
+    },
+    {
+      "idx": 27,
+      "link_id": 35097,
+      "port": 9026,
+      "error": "check_host_exit_nonzero",
+      "error_detail": "check_host_exit_nonzero",
+      "duration_sec": 60.084
+    },
+    {
+      "idx": 22,
+      "link_id": 35090,
+      "port": 9021,
+      "error": "check_host_exit_nonzero",
+      "error_detail": "check_host_exit_nonzero",
+      "duration_sec": 60.092
+    },
+    {
+      "idx": 24,
+      "link_id": 35094,
+      "port": 9023,
+      "error": "check_host_exit_nonzero",
+      "error_detail": "check_host_exit_nonzero",
+      "duration_sec": 60.09
+    },
+    {
+      "idx": 53,
+      "link_id": 35128,
+      "port": 9052,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 1.806
+    },
+    {
+      "idx": 34,
+      "link_id": 35107,
+      "port": 9033,
+      "error": "check_host_exit_nonzero",
+      "error_detail": "check_host_exit_nonzero",
+      "duration_sec": 60.072
+    },
+    {
+      "idx": 65,
+      "link_id": 35142,
+      "port": 9064,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 2.209
+    },
+    {
+      "idx": 42,
+      "link_id": 35116,
+      "port": 9041,
+      "error": "check_host_exit_nonzero",
+      "error_detail": "check_host_exit_nonzero",
+      "duration_sec": 60.08
+    },
+    {
+      "idx": 73,
+      "link_id": 35154,
+      "port": 9072,
+      "error": "tls",
+      "error_detail": "tls_error:SOCKSHTTPSConnectionPool(host='check-host.net', port=443): Max retries exceeded with url: /me (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1000)')))",
+      "duration_sec": 1.604
+    },
+    {
+      "idx": 49,
+      "link_id": 35124,
+      "port": 9048,
+      "error": "check_host_exit_nonzero",
+      "error_detail": "check_host_exit_nonzero",
+      "duration_sec": 60.068
+    },
+    {
+      "idx": 44,
+      "link_id": 35118,
+      "port": 9043,
+      "error": "check_host_exit_nonzero",
+      "error_detail": "check_host_exit_nonzero",
+      "duration_sec": 60.07
+    },
+    {
+      "idx": 84,
+      "link_id": 35167,
+      "port": 9083,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 2.809
+    },
+    {
+      "idx": 75,
+      "link_id": 35158,
+      "port": 9074,
+      "error": "tls",
+      "error_detail": "tls_error:SOCKSHTTPSConnectionPool(host='check-host.net', port=443): Max retries exceeded with url: /me (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1000)')))",
+      "duration_sec": 20.029
+    },
+    {
+      "idx": 52,
+      "link_id": 35127,
+      "port": 9051,
+      "error": "check_host_exit_nonzero",
+      "error_detail": "check_host_exit_nonzero",
+      "duration_sec": 60.081
+    },
+    {
+      "idx": 50,
+      "link_id": 35125,
+      "port": 9049,
+      "error": "check_host_exit_nonzero",
+      "error_detail": "check_host_exit_nonzero",
+      "duration_sec": 60.086
+    },
+    {
+      "idx": 59,
+      "link_id": 35134,
+      "port": 9058,
+      "error": "check_host_exit_nonzero",
+      "error_detail": "check_host_exit_nonzero",
+      "duration_sec": 60.079
+    },
+    {
+      "idx": 62,
+      "link_id": 35138,
+      "port": 9061,
+      "error": "check_host_exit_nonzero",
+      "error_detail": "check_host_exit_nonzero",
+      "duration_sec": 60.081
+    },
+    {
+      "idx": 68,
+      "link_id": 35146,
+      "port": 9067,
+      "error": "check_host_exit_nonzero",
+      "error_detail": "check_host_exit_nonzero",
+      "duration_sec": 60.078
+    },
+    {
+      "idx": 69,
+      "link_id": 35148,
+      "port": 9068,
+      "error": "check_host_exit_nonzero",
+      "error_detail": "check_host_exit_nonzero",
+      "duration_sec": 60.08
+    },
+    {
+      "idx": 80,
+      "link_id": 35163,
+      "port": 9079,
+      "error": "tls",
+      "error_detail": "tls_error:SOCKSHTTPSConnectionPool(host='check-host.net', port=443): Max retries exceeded with url: /me (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1000)')))",
+      "duration_sec": 59.476
+    },
+    {
+      "idx": 76,
+      "link_id": 35159,
+      "port": 9075,
+      "error": "check_host_exit_nonzero",
+      "error_detail": "check_host_exit_nonzero",
+      "duration_sec": 60.073
+    },
+    {
+      "idx": 85,
+      "link_id": 35168,
+      "port": 9084,
+      "error": "check_host_exit_nonzero",
+      "error_detail": "check_host_exit_nonzero",
+      "duration_sec": 60.074
+    },
+    {
+      "idx": 88,
+      "link_id": 35172,
+      "port": 9087,
+      "error": "check_host_exit_nonzero",
+      "error_detail": "check_host_exit_nonzero",
+      "duration_sec": 60.075
+    },
+    {
+      "idx": 91,
+      "link_id": 35175,
+      "port": 9090,
+      "error": "check_host_exit_nonzero",
+      "error_detail": "check_host_exit_nonzero",
+      "duration_sec": 60.073
+    },
+    {
+      "idx": 95,
+      "link_id": 35181,
+      "port": 9094,
+      "error": "check_host_exit_nonzero",
+      "error_detail": "check_host_exit_nonzero",
+      "duration_sec": 60.084
+    }
+  ]
+}

@@ -1,0 +1,792 @@
+{
+  "status": "ok",
+  "batch_id": "04f1c16e919a42e6ac43d16c4840c8d3-000021",
+  "db": "/opt/xraymgr/data/xraymgr.db",
+  "count_requested": 100,
+  "count_tested": 96,
+  "parallel": 10,
+  "ports": {
+    "start": 9000,
+    "end": 9099
+  },
+  "started_at_utc": "2026-01-07T17:15:30.882837Z",
+  "finished_at_utc": "2026-01-07T17:18:05.423413Z",
+  "duration_sec": 154.541,
+  "summary": {
+    "ok": 0,
+    "fail": 96,
+    "tested": 96,
+    "db_is_alive_1_total": 782
+  },
+  "ok": [],
+  "fail": [
+    {
+      "idx": 8,
+      "link_id": 211508,
+      "port": 9007,
+      "error": "tls",
+      "error_detail": "tls_error:SOCKSHTTPSConnectionPool(host='check-host.net', port=443): Max retries exceeded with url: /me (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1000)')))",
+      "duration_sec": 1.609
+    },
+    {
+      "idx": 10,
+      "link_id": 211510,
+      "port": 9009,
+      "error": "tls",
+      "error_detail": "tls_error:SOCKSHTTPSConnectionPool(host='check-host.net', port=443): Max retries exceeded with url: /me (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1000)')))",
+      "duration_sec": 1.613
+    },
+    {
+      "idx": 13,
+      "link_id": 211515,
+      "port": 9012,
+      "error": "tls",
+      "error_detail": "tls_error:SOCKSHTTPSConnectionPool(host='check-host.net', port=443): Max retries exceeded with url: /me (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1000)')))",
+      "duration_sec": 0.405
+    },
+    {
+      "idx": 14,
+      "link_id": 211518,
+      "port": 9013,
+      "error": "tls",
+      "error_detail": "tls_error:SOCKSHTTPSConnectionPool(host='check-host.net', port=443): Max retries exceeded with url: /me (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1000)')))",
+      "duration_sec": 0.602
+    },
+    {
+      "idx": 5,
+      "link_id": 211503,
+      "port": 9004,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 3.412
+    },
+    {
+      "idx": 7,
+      "link_id": 211505,
+      "port": 9006,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 3.61
+    },
+    {
+      "idx": 9,
+      "link_id": 211509,
+      "port": 9008,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 3.63
+    },
+    {
+      "idx": 6,
+      "link_id": 211504,
+      "port": 9005,
+      "error": "check_host_exit_nonzero",
+      "error_detail": "check_host_exit_nonzero",
+      "duration_sec": 60.089
+    },
+    {
+      "idx": 1,
+      "link_id": 211499,
+      "port": 9000,
+      "error": "check_host_exit_nonzero",
+      "error_detail": "check_host_exit_nonzero",
+      "duration_sec": 60.102
+    },
+    {
+      "idx": 2,
+      "link_id": 211500,
+      "port": 9001,
+      "error": "check_host_exit_nonzero",
+      "error_detail": "check_host_exit_nonzero",
+      "duration_sec": 60.102
+    },
+    {
+      "idx": 4,
+      "link_id": 211502,
+      "port": 9003,
+      "error": "check_host_exit_nonzero",
+      "error_detail": "check_host_exit_nonzero",
+      "duration_sec": 60.102
+    },
+    {
+      "idx": 11,
+      "link_id": 211511,
+      "port": 9010,
+      "error": "check_host_exit_nonzero",
+      "error_detail": "check_host_exit_nonzero",
+      "duration_sec": 60.094
+    },
+    {
+      "idx": 12,
+      "link_id": 211513,
+      "port": 9011,
+      "error": "check_host_exit_nonzero",
+      "error_detail": "check_host_exit_nonzero",
+      "duration_sec": 60.081
+    },
+    {
+      "idx": 15,
+      "link_id": 211519,
+      "port": 9014,
+      "error": "check_host_exit_nonzero",
+      "error_detail": "check_host_exit_nonzero",
+      "duration_sec": 60.081
+    },
+    {
+      "idx": 22,
+      "link_id": 211527,
+      "port": 9021,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 2.813
+    },
+    {
+      "idx": 23,
+      "link_id": 211529,
+      "port": 9022,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 3.01
+    },
+    {
+      "idx": 26,
+      "link_id": 211533,
+      "port": 9025,
+      "error": "tls",
+      "error_detail": "tls_error:SOCKSHTTPSConnectionPool(host='check-host.net', port=443): Max retries exceeded with url: /me (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1000)')))",
+      "duration_sec": 0.405
+    },
+    {
+      "idx": 16,
+      "link_id": 211520,
+      "port": 9015,
+      "error": "check_host_exit_nonzero",
+      "error_detail": "check_host_exit_nonzero",
+      "duration_sec": 60.091
+    },
+    {
+      "idx": 17,
+      "link_id": 211521,
+      "port": 9016,
+      "error": "check_host_exit_nonzero",
+      "error_detail": "check_host_exit_nonzero",
+      "duration_sec": 60.085
+    },
+    {
+      "idx": 19,
+      "link_id": 211523,
+      "port": 9018,
+      "error": "check_host_exit_nonzero",
+      "error_detail": "check_host_exit_nonzero",
+      "duration_sec": 60.082
+    },
+    {
+      "idx": 31,
+      "link_id": 211539,
+      "port": 9030,
+      "error": "tls",
+      "error_detail": "tls_error:SOCKSHTTPSConnectionPool(host='check-host.net', port=443): Max retries exceeded with url: /me (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1000)')))",
+      "duration_sec": 0.403
+    },
+    {
+      "idx": 34,
+      "link_id": 211542,
+      "port": 9033,
+      "error": "tls",
+      "error_detail": "tls_error:SOCKSHTTPSConnectionPool(host='check-host.net', port=443): Max retries exceeded with url: /me (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1000)')))",
+      "duration_sec": 0.605
+    },
+    {
+      "idx": 30,
+      "link_id": 211538,
+      "port": 9029,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 1.406
+    },
+    {
+      "idx": 36,
+      "link_id": 211544,
+      "port": 9035,
+      "error": "tls",
+      "error_detail": "tls_error:SOCKSHTTPSConnectionPool(host='check-host.net', port=443): Max retries exceeded with url: /me (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1000)')))",
+      "duration_sec": 0.404
+    },
+    {
+      "idx": 24,
+      "link_id": 211530,
+      "port": 9023,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 5.82
+    },
+    {
+      "idx": 33,
+      "link_id": 211541,
+      "port": 9032,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 2.409
+    },
+    {
+      "idx": 37,
+      "link_id": 211545,
+      "port": 9036,
+      "error": "tls",
+      "error_detail": "tls_error:SOCKSHTTPSConnectionPool(host='check-host.net', port=443): Max retries exceeded with url: /me (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1000)')))",
+      "duration_sec": 1.204
+    },
+    {
+      "idx": 32,
+      "link_id": 211540,
+      "port": 9031,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 3.007
+    },
+    {
+      "idx": 38,
+      "link_id": 211547,
+      "port": 9037,
+      "error": "tls",
+      "error_detail": "tls_error:SOCKSHTTPSConnectionPool(host='check-host.net', port=443): Max retries exceeded with url: /me (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1000)')))",
+      "duration_sec": 0.804
+    },
+    {
+      "idx": 39,
+      "link_id": 211548,
+      "port": 9038,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 2.807
+    },
+    {
+      "idx": 41,
+      "link_id": 211554,
+      "port": 9040,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 2.405
+    },
+    {
+      "idx": 40,
+      "link_id": 211550,
+      "port": 9039,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 3.011
+    },
+    {
+      "idx": 43,
+      "link_id": 211556,
+      "port": 9042,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 2.411
+    },
+    {
+      "idx": 35,
+      "link_id": 211543,
+      "port": 9034,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 7.414
+    },
+    {
+      "idx": 47,
+      "link_id": 211560,
+      "port": 9046,
+      "error": "tls",
+      "error_detail": "tls_error:SOCKSHTTPSConnectionPool(host='check-host.net', port=443): Max retries exceeded with url: /me (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1000)')))",
+      "duration_sec": 0.403
+    },
+    {
+      "idx": 42,
+      "link_id": 211555,
+      "port": 9041,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 7.415
+    },
+    {
+      "idx": 48,
+      "link_id": 211561,
+      "port": 9047,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 2.405
+    },
+    {
+      "idx": 49,
+      "link_id": 211565,
+      "port": 9048,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 1.805
+    },
+    {
+      "idx": 50,
+      "link_id": 211567,
+      "port": 9049,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 2.605
+    },
+    {
+      "idx": 52,
+      "link_id": 211571,
+      "port": 9051,
+      "error": "tls",
+      "error_detail": "tls_error:SOCKSHTTPSConnectionPool(host='check-host.net', port=443): Max retries exceeded with url: /me (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1000)')))",
+      "duration_sec": 0.403
+    },
+    {
+      "idx": 51,
+      "link_id": 211568,
+      "port": 9050,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 3.605
+    },
+    {
+      "idx": 53,
+      "link_id": 211572,
+      "port": 9052,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 2.404
+    },
+    {
+      "idx": 54,
+      "link_id": 211573,
+      "port": 9053,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 2.605
+    },
+    {
+      "idx": 55,
+      "link_id": 211574,
+      "port": 9054,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 4.005
+    },
+    {
+      "idx": 56,
+      "link_id": 211576,
+      "port": 9055,
+      "error": "tls",
+      "error_detail": "tls_error:SOCKSHTTPSConnectionPool(host='check-host.net', port=443): Max retries exceeded with url: /me (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1000)')))",
+      "duration_sec": 8.411
+    },
+    {
+      "idx": 20,
+      "link_id": 211524,
+      "port": 9019,
+      "error": "check_host_exit_nonzero",
+      "error_detail": "check_host_exit_nonzero",
+      "duration_sec": 60.095
+    },
+    {
+      "idx": 21,
+      "link_id": 211525,
+      "port": 9020,
+      "error": "check_host_exit_nonzero",
+      "error_detail": "check_host_exit_nonzero",
+      "duration_sec": 60.088
+    },
+    {
+      "idx": 60,
+      "link_id": 211581,
+      "port": 9059,
+      "error": "tls",
+      "error_detail": "tls_error:SOCKSHTTPSConnectionPool(host='check-host.net', port=443): Max retries exceeded with url: /me (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1000)')))",
+      "duration_sec": 0.606
+    },
+    {
+      "idx": 61,
+      "link_id": 211583,
+      "port": 9060,
+      "error": "tls",
+      "error_detail": "tls_error:SOCKSHTTPSConnectionPool(host='check-host.net', port=443): Max retries exceeded with url: /me (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1000)')))",
+      "duration_sec": 0.404
+    },
+    {
+      "idx": 25,
+      "link_id": 211532,
+      "port": 9024,
+      "error": "check_host_exit_nonzero",
+      "error_detail": "check_host_exit_nonzero",
+      "duration_sec": 60.078
+    },
+    {
+      "idx": 59,
+      "link_id": 211580,
+      "port": 9058,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 2.406
+    },
+    {
+      "idx": 27,
+      "link_id": 211534,
+      "port": 9026,
+      "error": "check_host_exit_nonzero",
+      "error_detail": "check_host_exit_nonzero",
+      "duration_sec": 60.086
+    },
+    {
+      "idx": 29,
+      "link_id": 211537,
+      "port": 9028,
+      "error": "check_host_exit_nonzero",
+      "error_detail": "check_host_exit_nonzero",
+      "duration_sec": 60.079
+    },
+    {
+      "idx": 62,
+      "link_id": 211584,
+      "port": 9061,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 2.407
+    },
+    {
+      "idx": 67,
+      "link_id": 211590,
+      "port": 9066,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 3.007
+    },
+    {
+      "idx": 69,
+      "link_id": 211592,
+      "port": 9068,
+      "error": "tls",
+      "error_detail": "tls_error:SOCKSHTTPSConnectionPool(host='check-host.net', port=443): Max retries exceeded with url: /me (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1000)')))",
+      "duration_sec": 1.603
+    },
+    {
+      "idx": 70,
+      "link_id": 211594,
+      "port": 9069,
+      "error": "tls",
+      "error_detail": "tls_error:SOCKSHTTPSConnectionPool(host='check-host.net', port=443): Max retries exceeded with url: /me (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1000)')))",
+      "duration_sec": 0.403
+    },
+    {
+      "idx": 44,
+      "link_id": 211557,
+      "port": 9043,
+      "error": "check_host_exit_nonzero",
+      "error_detail": "check_host_exit_nonzero",
+      "duration_sec": 60.086
+    },
+    {
+      "idx": 45,
+      "link_id": 211558,
+      "port": 9044,
+      "error": "check_host_exit_nonzero",
+      "error_detail": "check_host_exit_nonzero",
+      "duration_sec": 60.08
+    },
+    {
+      "idx": 68,
+      "link_id": 211591,
+      "port": 9067,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 7.412
+    },
+    {
+      "idx": 46,
+      "link_id": 211559,
+      "port": 9045,
+      "error": "check_host_exit_nonzero",
+      "error_detail": "check_host_exit_nonzero",
+      "duration_sec": 60.079
+    },
+    {
+      "idx": 74,
+      "link_id": 211602,
+      "port": 9073,
+      "error": "tls",
+      "error_detail": "tls_error:SOCKSHTTPSConnectionPool(host='check-host.net', port=443): Max retries exceeded with url: /me (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1000)')))",
+      "duration_sec": 0.604
+    },
+    {
+      "idx": 63,
+      "link_id": 211585,
+      "port": 9062,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 11.419
+    },
+    {
+      "idx": 75,
+      "link_id": 211604,
+      "port": 9074,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 2.405
+    },
+    {
+      "idx": 76,
+      "link_id": 211606,
+      "port": 9075,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 2.609
+    },
+    {
+      "idx": 79,
+      "link_id": 211609,
+      "port": 9078,
+      "error": "tls",
+      "error_detail": "tls_error:SOCKSHTTPSConnectionPool(host='check-host.net', port=443): Max retries exceeded with url: /me (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1000)')))",
+      "duration_sec": 0.403
+    },
+    {
+      "idx": 80,
+      "link_id": 211611,
+      "port": 9079,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 2.605
+    },
+    {
+      "idx": 77,
+      "link_id": 211607,
+      "port": 9076,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 4.613
+    },
+    {
+      "idx": 72,
+      "link_id": 211597,
+      "port": 9071,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 8.616
+    },
+    {
+      "idx": 57,
+      "link_id": 211577,
+      "port": 9056,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 53.666
+    },
+    {
+      "idx": 64,
+      "link_id": 211586,
+      "port": 9063,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 15.224
+    },
+    {
+      "idx": 66,
+      "link_id": 211589,
+      "port": 9065,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 14.822
+    },
+    {
+      "idx": 71,
+      "link_id": 211595,
+      "port": 9070,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 9.619
+    },
+    {
+      "idx": 58,
+      "link_id": 211578,
+      "port": 9057,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 47.258
+    },
+    {
+      "idx": 73,
+      "link_id": 211599,
+      "port": 9072,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 8.617
+    },
+    {
+      "idx": 78,
+      "link_id": 211608,
+      "port": 9077,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 4.012
+    },
+    {
+      "idx": 81,
+      "link_id": 211612,
+      "port": 9080,
+      "error": "tls",
+      "error_detail": "tls_error:SOCKSHTTPSConnectionPool(host='check-host.net', port=443): Max retries exceeded with url: /me (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1000)')))",
+      "duration_sec": 0.809
+    },
+    {
+      "idx": 82,
+      "link_id": 211613,
+      "port": 9081,
+      "error": "connect",
+      "error_detail": "connection_failed:SOCKSHTTPSConnectionPool(host='check-host.net', port=443): Max retries exceeded with url: /me (Caused by NewConnectionError(\"SOCKSHTTPSConnection(host='check-host.net', port=443): Failed to establish a new connection: [...",
+      "duration_sec": 1.411
+    },
+    {
+      "idx": 85,
+      "link_id": 211619,
+      "port": 9084,
+      "error": "connect",
+      "error_detail": "connection_failed:SOCKSHTTPSConnectionPool(host='check-host.net', port=443): Max retries exceeded with url: /me (Caused by NewConnectionError(\"SOCKSHTTPSConnection(host='check-host.net', port=443): Failed to establish a new connection: [...",
+      "duration_sec": 1.412
+    },
+    {
+      "idx": 83,
+      "link_id": 211614,
+      "port": 9082,
+      "error": "connect",
+      "error_detail": "connection_failed:SOCKSHTTPSConnectionPool(host='check-host.net', port=443): Max retries exceeded with url: /me (Caused by NewConnectionError(\"SOCKSHTTPSConnection(host='check-host.net', port=443): Failed to establish a new connection: [...",
+      "duration_sec": 1.413
+    },
+    {
+      "idx": 84,
+      "link_id": 211615,
+      "port": 9083,
+      "error": "connect",
+      "error_detail": "connection_failed:SOCKSHTTPSConnectionPool(host='check-host.net', port=443): Max retries exceeded with url: /me (Caused by NewConnectionError(\"SOCKSHTTPSConnection(host='check-host.net', port=443): Failed to establish a new connection: [...",
+      "duration_sec": 1.413
+    },
+    {
+      "idx": 87,
+      "link_id": 211621,
+      "port": 9086,
+      "error": "connect",
+      "error_detail": "connection_failed:SOCKSHTTPSConnectionPool(host='check-host.net', port=443): Max retries exceeded with url: /me (Caused by NewConnectionError(\"SOCKSHTTPSConnection(host='check-host.net', port=443): Failed to establish a new connection: [...",
+      "duration_sec": 1.406
+    },
+    {
+      "idx": 86,
+      "link_id": 211620,
+      "port": 9085,
+      "error": "connect",
+      "error_detail": "connection_failed:SOCKSHTTPSConnectionPool(host='check-host.net', port=443): Max retries exceeded with url: /me (Caused by NewConnectionError(\"SOCKSHTTPSConnection(host='check-host.net', port=443): Failed to establish a new connection: [...",
+      "duration_sec": 1.409
+    },
+    {
+      "idx": 88,
+      "link_id": 211626,
+      "port": 9087,
+      "error": "connect",
+      "error_detail": "connection_failed:SOCKSHTTPSConnectionPool(host='check-host.net', port=443): Max retries exceeded with url: /me (Caused by NewConnectionError(\"SOCKSHTTPSConnection(host='check-host.net', port=443): Failed to establish a new connection: [...",
+      "duration_sec": 1.412
+    },
+    {
+      "idx": 90,
+      "link_id": 211629,
+      "port": 9089,
+      "error": "connect",
+      "error_detail": "connection_failed:SOCKSHTTPSConnectionPool(host='check-host.net', port=443): Max retries exceeded with url: /me (Caused by NewConnectionError(\"SOCKSHTTPSConnection(host='check-host.net', port=443): Failed to establish a new connection: [...",
+      "duration_sec": 1.41
+    },
+    {
+      "idx": 89,
+      "link_id": 211628,
+      "port": 9088,
+      "error": "connect",
+      "error_detail": "connection_failed:SOCKSHTTPSConnectionPool(host='check-host.net', port=443): Max retries exceeded with url: /me (Caused by NewConnectionError(\"SOCKSHTTPSConnection(host='check-host.net', port=443): Failed to establish a new connection: [...",
+      "duration_sec": 1.417
+    },
+    {
+      "idx": 91,
+      "link_id": 211630,
+      "port": 9090,
+      "error": "connect",
+      "error_detail": "connection_failed:SOCKSHTTPSConnectionPool(host='check-host.net', port=443): Max retries exceeded with url: /me (Caused by NewConnectionError(\"SOCKSHTTPSConnection(host='check-host.net', port=443): Failed to establish a new connection: [...",
+      "duration_sec": 1.414
+    },
+    {
+      "idx": 92,
+      "link_id": 211631,
+      "port": 9091,
+      "error": "connect",
+      "error_detail": "connection_failed:SOCKSHTTPSConnectionPool(host='check-host.net', port=443): Max retries exceeded with url: /me (Caused by NewConnectionError(\"SOCKSHTTPSConnection(host='check-host.net', port=443): Failed to establish a new connection: [...",
+      "duration_sec": 1.207
+    },
+    {
+      "idx": 95,
+      "link_id": 211634,
+      "port": 9094,
+      "error": "connect",
+      "error_detail": "connection_failed:SOCKSHTTPSConnectionPool(host='check-host.net', port=443): Max retries exceeded with url: /me (Caused by NewConnectionError(\"SOCKSHTTPSConnection(host='check-host.net', port=443): Failed to establish a new connection: [...",
+      "duration_sec": 1.21
+    },
+    {
+      "idx": 97,
+      "link_id": 211636,
+      "port": 9096,
+      "error": "connect",
+      "error_detail": "connection_failed:SOCKSHTTPSConnectionPool(host='check-host.net', port=443): Max retries exceeded with url: /me (Caused by NewConnectionError(\"SOCKSHTTPSConnection(host='check-host.net', port=443): Failed to establish a new connection: [...",
+      "duration_sec": 1.209
+    },
+    {
+      "idx": 93,
+      "link_id": 211632,
+      "port": 9092,
+      "error": "connect",
+      "error_detail": "connection_failed:SOCKSHTTPSConnectionPool(host='check-host.net', port=443): Max retries exceeded with url: /me (Caused by NewConnectionError(\"SOCKSHTTPSConnection(host='check-host.net', port=443): Failed to establish a new connection: [...",
+      "duration_sec": 1.215
+    },
+    {
+      "idx": 96,
+      "link_id": 211635,
+      "port": 9095,
+      "error": "connect",
+      "error_detail": "connection_failed:SOCKSHTTPSConnectionPool(host='check-host.net', port=443): Max retries exceeded with url: /me (Caused by NewConnectionError(\"SOCKSHTTPSConnection(host='check-host.net', port=443): Failed to establish a new connection: [...",
+      "duration_sec": 1.214
+    },
+    {
+      "idx": 94,
+      "link_id": 211633,
+      "port": 9093,
+      "error": "connect",
+      "error_detail": "connection_failed:SOCKSHTTPSConnectionPool(host='check-host.net', port=443): Max retries exceeded with url: /me (Caused by NewConnectionError(\"SOCKSHTTPSConnection(host='check-host.net', port=443): Failed to establish a new connection: [...",
+      "duration_sec": 1.219
+    },
+    {
+      "idx": 98,
+      "link_id": 211638,
+      "port": 9097,
+      "error": "connect",
+      "error_detail": "connection_failed:SOCKSHTTPSConnectionPool(host='check-host.net', port=443): Max retries exceeded with url: /me (Caused by NewConnectionError(\"SOCKSHTTPSConnection(host='check-host.net', port=443): Failed to establish a new connection: [...",
+      "duration_sec": 1.214
+    },
+    {
+      "idx": 99,
+      "link_id": 211639,
+      "port": 9098,
+      "error": "connect",
+      "error_detail": "connection_failed:SOCKSHTTPSConnectionPool(host='check-host.net', port=443): Max retries exceeded with url: /me (Caused by NewConnectionError(\"SOCKSHTTPSConnection(host='check-host.net', port=443): Failed to establish a new connection: [...",
+      "duration_sec": 1.209
+    },
+    {
+      "idx": 100,
+      "link_id": 211640,
+      "port": 9099,
+      "error": "connect",
+      "error_detail": "connection_failed:SOCKSHTTPSConnectionPool(host='check-host.net', port=443): Max retries exceeded with url: /me (Caused by NewConnectionError(\"SOCKSHTTPSConnection(host='check-host.net', port=443): Failed to establish a new connection: [...",
+      "duration_sec": 1.204
+    }
+  ]
+}

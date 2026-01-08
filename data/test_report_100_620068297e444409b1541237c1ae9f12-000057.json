@@ -1,0 +1,808 @@
+{
+  "status": "ok",
+  "batch_id": "620068297e444409b1541237c1ae9f12-000057",
+  "db": "/opt/xraymgr/data/xraymgr.db",
+  "count_requested": 100,
+  "count_tested": 98,
+  "parallel": 10,
+  "ports": {
+    "start": 9000,
+    "end": 9099
+  },
+  "started_at_utc": "2026-01-06T22:52:30.180210Z",
+  "finished_at_utc": "2026-01-06T22:52:59.624565Z",
+  "duration_sec": 29.444,
+  "summary": {
+    "ok": 0,
+    "fail": 98,
+    "tested": 98,
+    "db_is_alive_1_total": 767
+  },
+  "ok": [],
+  "fail": [
+    {
+      "idx": 8,
+      "link_id": 175981,
+      "port": 9007,
+      "error": "tls",
+      "error_detail": "tls_error:SOCKSHTTPSConnectionPool(host='check-host.net', port=443): Max retries exceeded with url: /me (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1000)')))",
+      "duration_sec": 1.413
+    },
+    {
+      "idx": 7,
+      "link_id": 175980,
+      "port": 9006,
+      "error": "tls",
+      "error_detail": "tls_error:SOCKSHTTPSConnectionPool(host='check-host.net', port=443): Max retries exceeded with url: /me (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1000)')))",
+      "duration_sec": 1.416
+    },
+    {
+      "idx": 4,
+      "link_id": 175977,
+      "port": 9003,
+      "error": "tls",
+      "error_detail": "tls_error:SOCKSHTTPSConnectionPool(host='check-host.net', port=443): Max retries exceeded with url: /me (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1000)')))",
+      "duration_sec": 1.609
+    },
+    {
+      "idx": 3,
+      "link_id": 175975,
+      "port": 9002,
+      "error": "tls",
+      "error_detail": "tls_error:SOCKSHTTPSConnectionPool(host='check-host.net', port=443): Max retries exceeded with url: /me (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1000)')))",
+      "duration_sec": 1.611
+    },
+    {
+      "idx": 14,
+      "link_id": 175989,
+      "port": 9013,
+      "error": "tls",
+      "error_detail": "tls_error:SOCKSHTTPSConnectionPool(host='check-host.net', port=443): Max retries exceeded with url: /me (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1000)')))",
+      "duration_sec": 0.403
+    },
+    {
+      "idx": 15,
+      "link_id": 175990,
+      "port": 9014,
+      "error": "tls",
+      "error_detail": "tls_error:SOCKSHTTPSConnectionPool(host='check-host.net', port=443): Max retries exceeded with url: /me (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1000)')))",
+      "duration_sec": 0.403
+    },
+    {
+      "idx": 1,
+      "link_id": 175973,
+      "port": 9000,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 3.214
+    },
+    {
+      "idx": 2,
+      "link_id": 175974,
+      "port": 9001,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 3.225
+    },
+    {
+      "idx": 5,
+      "link_id": 175978,
+      "port": 9004,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 3.219
+    },
+    {
+      "idx": 6,
+      "link_id": 175979,
+      "port": 9005,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 3.619
+    },
+    {
+      "idx": 9,
+      "link_id": 175984,
+      "port": 9008,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 3.612
+    },
+    {
+      "idx": 11,
+      "link_id": 175986,
+      "port": 9010,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 2.41
+    },
+    {
+      "idx": 12,
+      "link_id": 175987,
+      "port": 9011,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 2.412
+    },
+    {
+      "idx": 17,
+      "link_id": 175992,
+      "port": 9016,
+      "error": "tls",
+      "error_detail": "tls_error:SOCKSHTTPSConnectionPool(host='check-host.net', port=443): Max retries exceeded with url: /me (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1000)')))",
+      "duration_sec": 0.809
+    },
+    {
+      "idx": 13,
+      "link_id": 175988,
+      "port": 9012,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 2.411
+    },
+    {
+      "idx": 18,
+      "link_id": 175994,
+      "port": 9017,
+      "error": "tls",
+      "error_detail": "tls_error:SOCKSHTTPSConnectionPool(host='check-host.net', port=443): Max retries exceeded with url: /me (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1000)')))",
+      "duration_sec": 1.009
+    },
+    {
+      "idx": 16,
+      "link_id": 175991,
+      "port": 9015,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 2.408
+    },
+    {
+      "idx": 20,
+      "link_id": 175998,
+      "port": 9019,
+      "error": "tls",
+      "error_detail": "tls_error:SOCKSHTTPSConnectionPool(host='check-host.net', port=443): Max retries exceeded with url: /me (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1000)')))",
+      "duration_sec": 1.208
+    },
+    {
+      "idx": 24,
+      "link_id": 176004,
+      "port": 9023,
+      "error": "tls",
+      "error_detail": "tls_error:SOCKSHTTPSConnectionPool(host='check-host.net', port=443): Max retries exceeded with url: /me (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1000)')))",
+      "duration_sec": 1.007
+    },
+    {
+      "idx": 23,
+      "link_id": 176002,
+      "port": 9022,
+      "error": "tls",
+      "error_detail": "tls_error:SOCKSHTTPSConnectionPool(host='check-host.net', port=443): Max retries exceeded with url: /me (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1000)')))",
+      "duration_sec": 1.402
+    },
+    {
+      "idx": 27,
+      "link_id": 176009,
+      "port": 9026,
+      "error": "tls",
+      "error_detail": "tls_error:SOCKSHTTPSConnectionPool(host='check-host.net', port=443): Max retries exceeded with url: /me (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1000)')))",
+      "duration_sec": 0.603
+    },
+    {
+      "idx": 28,
+      "link_id": 176010,
+      "port": 9027,
+      "error": "tls",
+      "error_detail": "tls_error:SOCKSHTTPSConnectionPool(host='check-host.net', port=443): Max retries exceeded with url: /me (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1000)')))",
+      "duration_sec": 0.604
+    },
+    {
+      "idx": 21,
+      "link_id": 175999,
+      "port": 9020,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 2.811
+    },
+    {
+      "idx": 22,
+      "link_id": 176000,
+      "port": 9021,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 2.809
+    },
+    {
+      "idx": 26,
+      "link_id": 176007,
+      "port": 9025,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 2.812
+    },
+    {
+      "idx": 33,
+      "link_id": 176017,
+      "port": 9032,
+      "error": "tls",
+      "error_detail": "tls_error:SOCKSHTTPSConnectionPool(host='check-host.net', port=443): Max retries exceeded with url: /me (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1000)')))",
+      "duration_sec": 0.804
+    },
+    {
+      "idx": 31,
+      "link_id": 176014,
+      "port": 9030,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 2.207
+    },
+    {
+      "idx": 25,
+      "link_id": 176005,
+      "port": 9024,
+      "error": "tls",
+      "error_detail": "tls_error:SOCKSHTTPSConnectionPool(host='check-host.net', port=443): Max retries exceeded with url: /me (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1000)')))",
+      "duration_sec": 3.618
+    },
+    {
+      "idx": 19,
+      "link_id": 175995,
+      "port": 9018,
+      "error": "tls",
+      "error_detail": "tls_error:SOCKSHTTPSConnectionPool(host='check-host.net', port=443): Max retries exceeded with url: /me (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1000)')))",
+      "duration_sec": 4.417
+    },
+    {
+      "idx": 29,
+      "link_id": 176011,
+      "port": 9028,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 2.614
+    },
+    {
+      "idx": 32,
+      "link_id": 176015,
+      "port": 9031,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 2.209
+    },
+    {
+      "idx": 30,
+      "link_id": 176012,
+      "port": 9029,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 2.409
+    },
+    {
+      "idx": 34,
+      "link_id": 176021,
+      "port": 9033,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 1.007
+    },
+    {
+      "idx": 10,
+      "link_id": 175985,
+      "port": 9009,
+      "error": "connect",
+      "error_detail": "connection_failed:('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+      "duration_sec": 7.626
+    },
+    {
+      "idx": 35,
+      "link_id": 176024,
+      "port": 9034,
+      "error": "tls",
+      "error_detail": "tls_error:SOCKSHTTPSConnectionPool(host='check-host.net', port=443): Max retries exceeded with url: /me (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1000)')))",
+      "duration_sec": 0.609
+    },
+    {
+      "idx": 36,
+      "link_id": 176025,
+      "port": 9035,
+      "error": "connect",
+      "error_detail": "connection_failed:SOCKSHTTPSConnectionPool(host='check-host.net', port=443): Max retries exceeded with url: /me (Caused by NewConnectionError(\"SOCKSHTTPSConnection(host='check-host.net', port=443): Failed to establish a new connection: [...",
+      "duration_sec": 0.816
+    },
+    {
+      "idx": 38,
+      "link_id": 176028,
+      "port": 9037,
+      "error": "connect",
+      "error_detail": "connection_failed:SOCKSHTTPSConnectionPool(host='check-host.net', port=443): Max retries exceeded with url: /me (Caused by NewConnectionError(\"SOCKSHTTPSConnection(host='check-host.net', port=443): Failed to establish a new connection: [...",
+      "duration_sec": 1.211
+    },
+    {
+      "idx": 42,
+      "link_id": 176035,
+      "port": 9041,
+      "error": "connect",
+      "error_detail": "connection_failed:SOCKSHTTPSConnectionPool(host='check-host.net', port=443): Max retries exceeded with url: /me (Caused by NewConnectionError(\"SOCKSHTTPSConnection(host='check-host.net', port=443): Failed to establish a new connection: [...",
+      "duration_sec": 1.209
+    },
+    {
+      "idx": 43,
+      "link_id": 176036,
+      "port": 9042,
+      "error": "connect",
+      "error_detail": "connection_failed:SOCKSHTTPSConnectionPool(host='check-host.net', port=443): Max retries exceeded with url: /me (Caused by NewConnectionError(\"SOCKSHTTPSConnection(host='check-host.net', port=443): Failed to establish a new connection: [...",
+      "duration_sec": 1.217
+    },
+    {
+      "idx": 46,
+      "link_id": 176041,
+      "port": 9045,
+      "error": "connect",
+      "error_detail": "connection_failed:SOCKSHTTPSConnectionPool(host='check-host.net', port=443): Max retries exceeded with url: /me (Caused by NewConnectionError(\"SOCKSHTTPSConnection(host='check-host.net', port=443): Failed to establish a new connection: [...",
+      "duration_sec": 1.219
+    },
+    {
+      "idx": 37,
+      "link_id": 176026,
+      "port": 9036,
+      "error": "connect",
+      "error_detail": "connection_failed:SOCKSHTTPSConnectionPool(host='check-host.net', port=443): Max retries exceeded with url: /me (Caused by NewConnectionError(\"SOCKSHTTPSConnection(host='check-host.net', port=443): Failed to establish a new connection: [...",
+      "duration_sec": 1.413
+    },
+    {
+      "idx": 40,
+      "link_id": 176030,
+      "port": 9039,
+      "error": "connect",
+      "error_detail": "connection_failed:SOCKSHTTPSConnectionPool(host='check-host.net', port=443): Max retries exceeded with url: /me (Caused by NewConnectionError(\"SOCKSHTTPSConnection(host='check-host.net', port=443): Failed to establish a new connection: [...",
+      "duration_sec": 1.408
+    },
+    {
+      "idx": 39,
+      "link_id": 176029,
+      "port": 9038,
+      "error": "connect",
+      "error_detail": "connection_failed:SOCKSHTTPSConnectionPool(host='check-host.net', port=443): Max retries exceeded with url: /me (Caused by NewConnectionError(\"SOCKSHTTPSConnection(host='check-host.net', port=443): Failed to establish a new connection: [...",
+      "duration_sec": 1.417
+    },
+    {
+      "idx": 44,
+      "link_id": 176037,
+      "port": 9043,
+      "error": "connect",
+      "error_detail": "connection_failed:SOCKSHTTPSConnectionPool(host='check-host.net', port=443): Max retries exceeded with url: /me (Caused by NewConnectionError(\"SOCKSHTTPSConnection(host='check-host.net', port=443): Failed to establish a new connection: [...",
+      "duration_sec": 1.41
+    },
+    {
+      "idx": 45,
+      "link_id": 176038,
+      "port": 9044,
+      "error": "connect",
+      "error_detail": "connection_failed:SOCKSHTTPSConnectionPool(host='check-host.net', port=443): Max retries exceeded with url: /me (Caused by NewConnectionError(\"SOCKSHTTPSConnection(host='check-host.net', port=443): Failed to establish a new connection: [...",
+      "duration_sec": 1.412
+    },
+    {
+      "idx": 47,
+      "link_id": 176043,
+      "port": 9046,
+      "error": "connect",
+      "error_detail": "connection_failed:SOCKSHTTPSConnectionPool(host='check-host.net', port=443): Max retries exceeded with url: /me (Caused by NewConnectionError(\"SOCKSHTTPSConnection(host='check-host.net', port=443): Failed to establish a new connection: [...",
+      "duration_sec": 1.012
+    },
+    {
+      "idx": 49,
+      "link_id": 176046,
+      "port": 9048,
+      "error": "connect",
+      "error_detail": "connection_failed:SOCKSHTTPSConnectionPool(host='check-host.net', port=443): Max retries exceeded with url: /me (Caused by NewConnectionError(\"SOCKSHTTPSConnection(host='check-host.net', port=443): Failed to establish a new connection: [...",
+      "duration_sec": 1.21
+    },
+    {
+      "idx": 50,
+      "link_id": 176048,
+      "port": 9049,
+      "error": "connect",
+      "error_detail": "connection_failed:SOCKSHTTPSConnectionPool(host='check-host.net', port=443): Max retries exceeded with url: /me (Caused by NewConnectionError(\"SOCKSHTTPSConnection(host='check-host.net', port=443): Failed to establish a new connection: [...",
+      "duration_sec": 1.206
+    },
+    {
+      "idx": 51,
+      "link_id": 176051,
+      "port": 9050,
+      "error": "connect",
+      "error_detail": "connection_failed:SOCKSHTTPSConnectionPool(host='check-host.net', port=443): Max retries exceeded with url: /me (Caused by NewConnectionError(\"SOCKSHTTPSConnection(host='check-host.net', port=443): Failed to establish a new connection: [...",
+      "duration_sec": 1.205
+    },
+    {
+      "idx": 52,
+      "link_id": 176053,
+      "port": 9051,
+      "error": "connect",
+      "error_detail": "connection_failed:SOCKSHTTPSConnectionPool(host='check-host.net', port=443): Max retries exceeded with url: /me (Caused by NewConnectionError(\"SOCKSHTTPSConnection(host='check-host.net', port=443): Failed to establish a new connection: [...",
+      "duration_sec": 1.212
+    },
+    {
+      "idx": 53,
+      "link_id": 176054,
+      "port": 9052,
+      "error": "connect",
+      "error_detail": "connection_failed:SOCKSHTTPSConnectionPool(host='check-host.net', port=443): Max retries exceeded with url: /me (Caused by NewConnectionError(\"SOCKSHTTPSConnection(host='check-host.net', port=443): Failed to establish a new connection: [...",
+      "duration_sec": 1.21
+    },
+    {
+      "idx": 54,
+      "link_id": 176055,
+      "port": 9053,
+      "error": "connect",
+      "error_detail": "connection_failed:SOCKSHTTPSConnectionPool(host='check-host.net', port=443): Max retries exceeded with url: /me (Caused by NewConnectionError(\"SOCKSHTTPSConnection(host='check-host.net', port=443): Failed to establish a new connection: [...",
+      "duration_sec": 1.209
+    },
+    {
+      "idx": 55,
+      "link_id": 176056,
+      "port": 9054,
+      "error": "connect",
+      "error_detail": "connection_failed:SOCKSHTTPSConnectionPool(host='check-host.net', port=443): Max retries exceeded with url: /me (Caused by NewConnectionError(\"SOCKSHTTPSConnection(host='check-host.net', port=443): Failed to establish a new connection: [...",
+      "duration_sec": 1.203
+    },
+    {
+      "idx": 58,
+      "link_id": 176059,
+      "port": 9057,
+      "error": "connect",
+      "error_detail": "connection_failed:SOCKSHTTPSConnectionPool(host='check-host.net', port=443): Max retries exceeded with url: /me (Caused by NewConnectionError(\"SOCKSHTTPSConnection(host='check-host.net', port=443): Failed to establish a new connection: [...",
+      "duration_sec": 1.211
+    },
+    {
+      "idx": 56,
+      "link_id": 176057,
+      "port": 9055,
+      "error": "connect",
+      "error_detail": "connection_failed:SOCKSHTTPSConnectionPool(host='check-host.net', port=443): Max retries exceeded with url: /me (Caused by NewConnectionError(\"SOCKSHTTPSConnection(host='check-host.net', port=443): Failed to establish a new connection: [...",
+      "duration_sec": 1.414
+    },
+    {
+      "idx": 57,
+      "link_id": 176058,
+      "port": 9056,
+      "error": "connect",
+      "error_detail": "connection_failed:SOCKSHTTPSConnectionPool(host='check-host.net', port=443): Max retries exceeded with url: /me (Caused by NewConnectionError(\"SOCKSHTTPSConnection(host='check-host.net', port=443): Failed to establish a new connection: [...",
+      "duration_sec": 1.412
+    },
+    {
+      "idx": 61,
+      "link_id": 176062,
+      "port": 9060,
+      "error": "connect",
+      "error_detail": "connection_failed:SOCKSHTTPSConnectionPool(host='check-host.net', port=443): Max retries exceeded with url: /me (Caused by NewConnectionError(\"SOCKSHTTPSConnection(host='check-host.net', port=443): Failed to establish a new connection: [...",
+      "duration_sec": 1.211
+    },
+    {
+      "idx": 59,
+      "link_id": 176060,
+      "port": 9058,
+      "error": "connect",
+      "error_detail": "connection_failed:SOCKSHTTPSConnectionPool(host='check-host.net', port=443): Max retries exceeded with url: /me (Caused by NewConnectionError(\"SOCKSHTTPSConnection(host='check-host.net', port=443): Failed to establish a new connection: [...",
+      "duration_sec": 1.403
+    },
+    {
+      "idx": 63,
+      "link_id": 176064,
+      "port": 9062,
+      "error": "connect",
+      "error_detail": "connection_failed:SOCKSHTTPSConnectionPool(host='check-host.net', port=443): Max retries exceeded with url: /me (Caused by NewConnectionError(\"SOCKSHTTPSConnection(host='check-host.net', port=443): Failed to establish a new connection: [...",
+      "duration_sec": 1.205
+    },
+    {
+      "idx": 64,
+      "link_id": 176065,
+      "port": 9063,
+      "error": "connect",
+      "error_detail": "connection_failed:SOCKSHTTPSConnectionPool(host='check-host.net', port=443): Max retries exceeded with url: /me (Caused by NewConnectionError(\"SOCKSHTTPSConnection(host='check-host.net', port=443): Failed to establish a new connection: [...",
+      "duration_sec": 1.209
+    },
+    {
+      "idx": 60,
+      "link_id": 176061,
+      "port": 9059,
+      "error": "connect",
+      "error_detail": "connection_failed:SOCKSHTTPSConnectionPool(host='check-host.net', port=443): Max retries exceeded with url: /me (Caused by NewConnectionError(\"SOCKSHTTPSConnection(host='check-host.net', port=443): Failed to establish a new connection: [...",
+      "duration_sec": 1.406
+    },
+    {
+      "idx": 65,
+      "link_id": 176068,
+      "port": 9064,
+      "error": "connect",
+      "error_detail": "connection_failed:SOCKSHTTPSConnectionPool(host='check-host.net', port=443): Max retries exceeded with url: /me (Caused by NewConnectionError(\"SOCKSHTTPSConnection(host='check-host.net', port=443): Failed to establish a new connection: [...",
+      "duration_sec": 1.208
+    },
+    {
+      "idx": 68,
+      "link_id": 176077,
+      "port": 9067,
+      "error": "connect",
+      "error_detail": "connection_failed:SOCKSHTTPSConnectionPool(host='check-host.net', port=443): Max retries exceeded with url: /me (Caused by NewConnectionError(\"SOCKSHTTPSConnection(host='check-host.net', port=443): Failed to establish a new connection: [...",
+      "duration_sec": 1.01
+    },
+    {
+      "idx": 66,
+      "link_id": 176071,
+      "port": 9065,
+      "error": "connect",
+      "error_detail": "connection_failed:SOCKSHTTPSConnectionPool(host='check-host.net', port=443): Max retries exceeded with url: /me (Caused by NewConnectionError(\"SOCKSHTTPSConnection(host='check-host.net', port=443): Failed to establish a new connection: [...",
+      "duration_sec": 1.208
+    },
+    {
+      "idx": 62,
+      "link_id": 176063,
+      "port": 9061,
+      "error": "connect",
+      "error_detail": "connection_failed:SOCKSHTTPSConnectionPool(host='check-host.net', port=443): Max retries exceeded with url: /me (Caused by NewConnectionError(\"SOCKSHTTPSConnection(host='check-host.net', port=443): Failed to establish a new connection: [...",
+      "duration_sec": 1.409
+    },
+    {
+      "idx": 67,
+      "link_id": 176076,
+      "port": 9066,
+      "error": "connect",
+      "error_detail": "connection_failed:SOCKSHTTPSConnectionPool(host='check-host.net', port=443): Max retries exceeded with url: /me (Caused by NewConnectionError(\"SOCKSHTTPSConnection(host='check-host.net', port=443): Failed to establish a new connection: [...",
+      "duration_sec": 1.211
+    },
+    {
+      "idx": 69,
+      "link_id": 176079,
+      "port": 9068,
+      "error": "connect",
+      "error_detail": "connection_failed:SOCKSHTTPSConnectionPool(host='check-host.net', port=443): Max retries exceeded with url: /me (Caused by NewConnectionError(\"SOCKSHTTPSConnection(host='check-host.net', port=443): Failed to establish a new connection: [...",
+      "duration_sec": 1.211
+    },
+    {
+      "idx": 76,
+      "link_id": 176090,
+      "port": 9075,
+      "error": "connect",
+      "error_detail": "connection_failed:SOCKSHTTPSConnectionPool(host='check-host.net', port=443): Max retries exceeded with url: /me (Caused by NewConnectionError(\"SOCKSHTTPSConnection(host='check-host.net', port=443): Failed to establish a new connection: [...",
+      "duration_sec": 1.213
+    },
+    {
+      "idx": 77,
+      "link_id": 176092,
+      "port": 9076,
+      "error": "connect",
+      "error_detail": "connection_failed:SOCKSHTTPSConnectionPool(host='check-host.net', port=443): Max retries exceeded with url: /me (Caused by NewConnectionError(\"SOCKSHTTPSConnection(host='check-host.net', port=443): Failed to establish a new connection: [...",
+      "duration_sec": 1.214
+    },
+    {
+      "idx": 71,
+      "link_id": 176082,
+      "port": 9070,
+      "error": "connect",
+      "error_detail": "connection_failed:SOCKSHTTPSConnectionPool(host='check-host.net', port=443): Max retries exceeded with url: /me (Caused by NewConnectionError(\"SOCKSHTTPSConnection(host='check-host.net', port=443): Failed to establish a new connection: [...",
+      "duration_sec": 1.41
+    },
+    {
+      "idx": 70,
+      "link_id": 176080,
+      "port": 9069,
+      "error": "connect",
+      "error_detail": "connection_failed:SOCKSHTTPSConnectionPool(host='check-host.net', port=443): Max retries exceeded with url: /me (Caused by NewConnectionError(\"SOCKSHTTPSConnection(host='check-host.net', port=443): Failed to establish a new connection: [...",
+      "duration_sec": 1.411
+    },
+    {
+      "idx": 72,
+      "link_id": 176083,
+      "port": 9071,
+      "error": "connect",
+      "error_detail": "connection_failed:SOCKSHTTPSConnectionPool(host='check-host.net', port=443): Max retries exceeded with url: /me (Caused by NewConnectionError(\"SOCKSHTTPSConnection(host='check-host.net', port=443): Failed to establish a new connection: [...",
+      "duration_sec": 1.409
+    },
+    {
+      "idx": 74,
+      "link_id": 176086,
+      "port": 9073,
+      "error": "connect",
+      "error_detail": "connection_failed:SOCKSHTTPSConnectionPool(host='check-host.net', port=443): Max retries exceeded with url: /me (Caused by NewConnectionError(\"SOCKSHTTPSConnection(host='check-host.net', port=443): Failed to establish a new connection: [...",
+      "duration_sec": 1.412
+    },
+    {
+      "idx": 73,
+      "link_id": 176085,
+      "port": 9072,
+      "error": "connect",
+      "error_detail": "connection_failed:SOCKSHTTPSConnectionPool(host='check-host.net', port=443): Max retries exceeded with url: /me (Caused by NewConnectionError(\"SOCKSHTTPSConnection(host='check-host.net', port=443): Failed to establish a new connection: [...",
+      "duration_sec": 1.413
+    },
+    {
+      "idx": 75,
+      "link_id": 176087,
+      "port": 9074,
+      "error": "connect",
+      "error_detail": "connection_failed:SOCKSHTTPSConnectionPool(host='check-host.net', port=443): Max retries exceeded with url: /me (Caused by NewConnectionError(\"SOCKSHTTPSConnection(host='check-host.net', port=443): Failed to establish a new connection: [...",
+      "duration_sec": 1.406
+    },
+    {
+      "idx": 78,
+      "link_id": 176093,
+      "port": 9077,
+      "error": "connect",
+      "error_detail": "connection_failed:SOCKSHTTPSConnectionPool(host='check-host.net', port=443): Max retries exceeded with url: /me (Caused by NewConnectionError(\"SOCKSHTTPSConnection(host='check-host.net', port=443): Failed to establish a new connection: [...",
+      "duration_sec": 1.215
+    },
+    {
+      "idx": 79,
+      "link_id": 176095,
+      "port": 9078,
+      "error": "connect",
+      "error_detail": "connection_failed:SOCKSHTTPSConnectionPool(host='check-host.net', port=443): Max retries exceeded with url: /me (Caused by NewConnectionError(\"SOCKSHTTPSConnection(host='check-host.net', port=443): Failed to establish a new connection: [...",
+      "duration_sec": 1.204
+    },
+    {
+      "idx": 80,
+      "link_id": 176098,
+      "port": 9079,
+      "error": "connect",
+      "error_detail": "connection_failed:SOCKSHTTPSConnectionPool(host='check-host.net', port=443): Max retries exceeded with url: /me (Caused by NewConnectionError(\"SOCKSHTTPSConnection(host='check-host.net', port=443): Failed to establish a new connection: [...",
+      "duration_sec": 1.207
+    },
+    {
+      "idx": 81,
+      "link_id": 176099,
+      "port": 9080,
+      "error": "connect",
+      "error_detail": "connection_failed:SOCKSHTTPSConnectionPool(host='check-host.net', port=443): Max retries exceeded with url: /me (Caused by NewConnectionError(\"SOCKSHTTPSConnection(host='check-host.net', port=443): Failed to establish a new connection: [...",
+      "duration_sec": 1.212
+    },
+    {
+      "idx": 83,
+      "link_id": 176102,
+      "port": 9082,
+      "error": "connect",
+      "error_detail": "connection_failed:SOCKSHTTPSConnectionPool(host='check-host.net', port=443): Max retries exceeded with url: /me (Caused by NewConnectionError(\"SOCKSHTTPSConnection(host='check-host.net', port=443): Failed to establish a new connection: [...",
+      "duration_sec": 1.205
+    },
+    {
+      "idx": 82,
+      "link_id": 176101,
+      "port": 9081,
+      "error": "connect",
+      "error_detail": "connection_failed:SOCKSHTTPSConnectionPool(host='check-host.net', port=443): Max retries exceeded with url: /me (Caused by NewConnectionError(\"SOCKSHTTPSConnection(host='check-host.net', port=443): Failed to establish a new connection: [...",
+      "duration_sec": 1.207
+    },
+    {
+      "idx": 84,
+      "link_id": 176105,
+      "port": 9083,
+      "error": "connect",
+      "error_detail": "connection_failed:SOCKSHTTPSConnectionPool(host='check-host.net', port=443): Max retries exceeded with url: /me (Caused by NewConnectionError(\"SOCKSHTTPSConnection(host='check-host.net', port=443): Failed to establish a new connection: [...",
+      "duration_sec": 1.208
+    },
+    {
+      "idx": 86,
+      "link_id": 176108,
+      "port": 9085,
+      "error": "connect",
+      "error_detail": "connection_failed:SOCKSHTTPSConnectionPool(host='check-host.net', port=443): Max retries exceeded with url: /me (Caused by NewConnectionError(\"SOCKSHTTPSConnection(host='check-host.net', port=443): Failed to establish a new connection: [...",
+      "duration_sec": 1.207
+    },
+    {
+      "idx": 85,
+      "link_id": 176106,
+      "port": 9084,
+      "error": "connect",
+      "error_detail": "connection_failed:SOCKSHTTPSConnectionPool(host='check-host.net', port=443): Max retries exceeded with url: /me (Caused by NewConnectionError(\"SOCKSHTTPSConnection(host='check-host.net', port=443): Failed to establish a new connection: [...",
+      "duration_sec": 1.21
+    },
+    {
+      "idx": 87,
+      "link_id": 176110,
+      "port": 9086,
+      "error": "connect",
+      "error_detail": "connection_failed:SOCKSHTTPSConnectionPool(host='check-host.net', port=443): Max retries exceeded with url: /me (Caused by NewConnectionError(\"SOCKSHTTPSConnection(host='check-host.net', port=443): Failed to establish a new connection: [...",
+      "duration_sec": 1.211
+    },
+    {
+      "idx": 88,
+      "link_id": 176112,
+      "port": 9087,
+      "error": "connect",
+      "error_detail": "connection_failed:SOCKSHTTPSConnectionPool(host='check-host.net', port=443): Max retries exceeded with url: /me (Caused by NewConnectionError(\"SOCKSHTTPSConnection(host='check-host.net', port=443): Failed to establish a new connection: [...",
+      "duration_sec": 1.203
+    },
+    {
+      "idx": 89,
+      "link_id": 176113,
+      "port": 9088,
+      "error": "connect",
+      "error_detail": "connection_failed:SOCKSHTTPSConnectionPool(host='check-host.net', port=443): Max retries exceeded with url: /me (Caused by NewConnectionError(\"SOCKSHTTPSConnection(host='check-host.net', port=443): Failed to establish a new connection: [...",
+      "duration_sec": 1.204
+    },
+    {
+      "idx": 91,
+      "link_id": 176118,
+      "port": 9090,
+      "error": "connect",
+      "error_detail": "connection_failed:SOCKSHTTPSConnectionPool(host='check-host.net', port=443): Max retries exceeded with url: /me (Caused by NewConnectionError(\"SOCKSHTTPSConnection(host='check-host.net', port=443): Failed to establish a new connection: [...",
+      "duration_sec": 1.207
+    },
+    {
+      "idx": 93,
+      "link_id": 176121,
+      "port": 9092,
+      "error": "connect",
+      "error_detail": "connection_failed:SOCKSHTTPSConnectionPool(host='check-host.net', port=443): Max retries exceeded with url: /me (Caused by NewConnectionError(\"SOCKSHTTPSConnection(host='check-host.net', port=443): Failed to establish a new connection: [...",
+      "duration_sec": 1.208
+    },
+    {
+      "idx": 92,
+      "link_id": 176120,
+      "port": 9091,
+      "error": "connect",
+      "error_detail": "connection_failed:SOCKSHTTPSConnectionPool(host='check-host.net', port=443): Max retries exceeded with url: /me (Caused by NewConnectionError(\"SOCKSHTTPSConnection(host='check-host.net', port=443): Failed to establish a new connection: [...",
+      "duration_sec": 1.211
+    },
+    {
+      "idx": 96,
+      "link_id": 176124,
+      "port": 9095,
+      "error": "connect",
+      "error_detail": "connection_failed:SOCKSHTTPSConnectionPool(host='check-host.net', port=443): Max retries exceeded with url: /me (Caused by NewConnectionError(\"SOCKSHTTPSConnection(host='check-host.net', port=443): Failed to establish a new connection: [...",
+      "duration_sec": 1.204
+    },
+    {
+      "idx": 90,
+      "link_id": 176115,
+      "port": 9089,
+      "error": "connect",
+      "error_detail": "connection_failed:SOCKSHTTPSConnectionPool(host='check-host.net', port=443): Max retries exceeded with url: /me (Caused by NewConnectionError(\"SOCKSHTTPSConnection(host='check-host.net', port=443): Failed to establish a new connection: [...",
+      "duration_sec": 1.414
+    },
+    {
+      "idx": 94,
+      "link_id": 176122,
+      "port": 9093,
+      "error": "connect",
+      "error_detail": "connection_failed:SOCKSHTTPSConnectionPool(host='check-host.net', port=443): Max retries exceeded with url: /me (Caused by NewConnectionError(\"SOCKSHTTPSConnection(host='check-host.net', port=443): Failed to establish a new connection: [...",
+      "duration_sec": 1.403
+    },
+    {
+      "idx": 95,
+      "link_id": 176123,
+      "port": 9094,
+      "error": "connect",
+      "error_detail": "connection_failed:SOCKSHTTPSConnectionPool(host='check-host.net', port=443): Max retries exceeded with url: /me (Caused by NewConnectionError(\"SOCKSHTTPSConnection(host='check-host.net', port=443): Failed to establish a new connection: [...",
+      "duration_sec": 1.405
+    },
+    {
+      "idx": 99,
+      "link_id": 176127,
+      "port": 9098,
+      "error": "connect",
+      "error_detail": "connection_failed:SOCKSHTTPSConnectionPool(host='check-host.net', port=443): Max retries exceeded with url: /me (Caused by NewConnectionError(\"SOCKSHTTPSConnection(host='check-host.net', port=443): Failed to establish a new connection: [...",
+      "duration_sec": 0.606
+    },
+    {
+      "idx": 98,
+      "link_id": 176126,
+      "port": 9097,
+      "error": "connect",
+      "error_detail": "connection_failed:SOCKSHTTPSConnectionPool(host='check-host.net', port=443): Max retries exceeded with url: /me (Caused by NewConnectionError(\"SOCKSHTTPSConnection(host='check-host.net', port=443): Failed to establish a new connection: [...",
+      "duration_sec": 1.406
+    },
+    {
+      "idx": 97,
+      "link_id": 176125,
+      "port": 9096,
+      "error": "connect",
+      "error_detail": "connection_failed:SOCKSHTTPSConnectionPool(host='check-host.net', port=443): Max retries exceeded with url: /me (Caused by NewConnectionError(\"SOCKSHTTPSConnection(host='check-host.net', port=443): Failed to establish a new connection: [...",
+      "duration_sec": 1.412
+    },
+    {
+      "idx": 100,
+      "link_id": 176129,
+      "port": 9099,
+      "error": "connect",
+      "error_detail": "connection_failed:SOCKSHTTPSConnectionPool(host='check-host.net', port=443): Max retries exceeded with url: /me (Caused by NewConnectionError(\"SOCKSHTTPSConnection(host='check-host.net', port=443): Failed to establish a new connection: [...",
+      "duration_sec": 0.402
+    }
+  ]
+}
