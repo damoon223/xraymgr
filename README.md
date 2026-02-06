@@ -1,24 +1,86 @@
+````markdown
 # xraymgr
 
-Minimal manager + web dashboard for collecting/importing configs and maintaining an SQLite database.
+A small FastAPI-based dashboard + jobs for collecting/importing proxy configs and maintaining an SQLite database.
 
-## Requirements
+## Quick install (fresh Debian/Ubuntu server)
 
-- Linux server (installer script targets **Debian/Ubuntu** via `apt-get`)
-- Python **3.9+**
-- Git
-- **Node.js** runtime available as `node` (needed for the JS bridge used in URL → outbound conversion)
-
-> Note: If you installed `nodejs-wheel` via `requirements.txt`, `node` should be available inside the Python venv.
-
-## Install (fresh server, recommended)
-
-This installs into: `/opt/xraymgr/`  
-It clones the repo, creates a venv in the same folder, and installs `requirements.txt`.
+Installs into: `/opt/xraymgr/`  
+Creates a venv at: `/opt/xraymgr/.venv`  
+Installs Python deps from `requirements.txt`.
 
 ```bash
-# Install script (runs as root and uses apt-get)
 sudo mkdir -p /opt
-
-# Run installer directly from GitHub
 curl -fsSL https://raw.githubusercontent.com/damoon223/xraymgr/main/scripts/install.sh | sudo bash
+````
+
+After install:
+
+```bash
+source /opt/xraymgr/.venv/bin/activate
+python --version
+pip --version
+node -v
+```
+
+> `node` must be available for the JS bridge used by URL → outbound conversion.
+
+## Manual install
+
+```bash
+sudo mkdir -p /opt
+sudo git clone --depth 1 https://github.com/damoon223/xraymgr.git /opt/xraymgr
+
+cd /opt/xraymgr
+python3 -m venv .venv
+source .venv/bin/activate
+
+python -m pip install --upgrade pip setuptools wheel
+python -m pip install -r requirements.txt
+
+node -v
+```
+
+## Run the dashboard
+
+From the repo root:
+
+```bash
+cd /opt/xraymgr
+source .venv/bin/activate
+
+uvicorn xraymgr.web:app --app-dir app --host 0.0.0.0 --port 8000
+```
+
+Open:
+
+* `http://<SERVER_IP>:8000/`
+
+## Required data file
+
+Collector sources file path:
+
+* `/opt/xraymgr/data/sources/proxy_sources.txt`
+
+Create it if missing:
+
+```bash
+mkdir -p /opt/xraymgr/data/sources
+touch /opt/xraymgr/data/sources/proxy_sources.txt
+```
+
+## Troubleshooting
+
+### “No links open” / bridge can’t convert
+
+```bash
+# Node must exist
+node -v
+
+# outbound.js must exist somewhere under webbundle
+find /opt/xraymgr/app/xraymgr/webbundle -iname 'outbound.js' -print
+```
+
+```
+::contentReference[oaicite:0]{index=0}
+```
