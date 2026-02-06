@@ -54,7 +54,7 @@ Thumbs.db
 *..db-wal
 # --- Text files (خواستهٔ خودت؛ همه txtها نادیده می‌شن) ---
 *.txt
-
+!/requirements.txt
 # --- Node / JS (اگه بعداً برای jsbridge چیزی آوردی) ---
 node_modules/
 npm-debug.log*
