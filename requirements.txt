@@ -1,6 +1,8 @@
-# Runtime dependencies (inferred from app/xraymgr imports)
-
+# Python runtime deps (app/xraymgr)
 fastapi>=0.110,<1.0
 uvicorn[standard]>=0.23,<1.0
 pydantic>=2.0,<3.0
 requests>=2.31,<3.0
+
+# Node.js runtime for jsbridge (provides `node` CLI inside the venv)
+nodejs-wheel>=24.13.0,<25.0
