@@ -1,11 +1,6 @@
-requirements.txt (repo root)
-
-```text
-# Python: 3.9+
-# Runtime deps inferred from app/xraymgr imports (FastAPI dashboard + HTTP fetching)
+# Runtime dependencies (inferred from app/xraymgr imports)
 
 fastapi>=0.110,<1.0
-pydantic>=2.0,<3.0
 uvicorn[standard]>=0.23,<1.0
+pydantic>=2.0,<3.0
 requests>=2.31,<3.0
-```
