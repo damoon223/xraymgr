@@ -17,3 +17,4 @@ TEST_INBOUND_TAG_PREFIX = "in_test_"
 # مشخصات موقت inbound تست (SOCKS5)
 TEST_SOCKS_USER = "me"
 TEST_SOCKS_PASS = "1"
+TEST_API_SERVER = "127.0.0.1:62789"

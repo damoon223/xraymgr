@@ -10,16 +10,12 @@
       "query": "select count(*) from links"
     },
     {
-      "label": "invalid=1 و unsupported=0 (50)",
-      "query": "select url,config_json,is_invalid,is_protocol_unsupported from links where is_invalid=1 and is_protocol_unsupported=0 limit 50"
-    },
-    {
-      "label": "select * from links where url='%%'",
-      "query": "select * from links where url='%%'"
-    },
-    {
       "label": "delete from links",
       "query": "delete from links"
+    },
+    {
+      "label": "is_alive=1",
+      "query": "select * from links where is_alive=1"
     },
     {
       "label": "new preset",
@@ -36,7 +32,7 @@
     "socks_user": "me",
     "socks_pass": "1",
     "xray_bin": "xray",
-    "api_server": "127.0.0.1:10085",
+    "api_server": "127.0.0.1:62789",
     "socks_listen": "127.0.0.1",
     "loads_per_test": 30
   },
