@@ -1,155 +1,138 @@
 #!/usr/bin/env python3
-import os
+# -*- coding: utf-8 -*-
 
-# مسیرهای اصلی
-BASE_DIR = "/opt/xraymgr"
-APP_DIR = os.path.join(BASE_DIR, "app")
-DATA_DIR = os.path.join(BASE_DIR, "data")
-DOC_DIR = os.path.join(BASE_DIR, "doc")
-OUTPUT_FILE = os.path.join(BASE_DIR, "filelist.txt")
+from __future__ import annotations
 
-# پوشهٔ web_static برای فایل‌های فرانت‌اند پنل
-WEB_STATIC_DIR = os.path.join(APP_DIR, "xraymgr", "web_static")
+from pathlib import Path
+from typing import Iterable
 
-# مسیر اپلیکیشن داخل app که باید .py و .sql از آن لیست شود
-APP_XRAYMGR_DIR = os.path.join(APP_DIR, "xraymgr")
+OWNER = "damoon223"
+REPO = "xraymgr"
+BRANCH = "main"
 
-# تنظیمات گیت‌هاب
-GITHUB_USER = "damoon223"
-GITHUB_REPO = "xraymgr"
-GITHUB_BRANCH = "main"
+TREE_BASE = f"https://github.com/{OWNER}/{REPO}/tree/{BRANCH}"
+RAW_BASE = f"https://raw.githubusercontent.com/{OWNER}/{REPO}/refs/heads/{BRANCH}"
 
-# base URL برای tree و raw
-GITHUB_TREE_BASE = f"https://github.com/{GITHUB_USER}/{GITHUB_REPO}/tree/{GITHUB_BRANCH}/"
-GITHUB_RAW_BASE = f"https://raw.githubusercontent.com/{GITHUB_USER}/{GITHUB_REPO}/refs/heads/{GITHUB_BRANCH}/"
-
-# مسیرهای نسبی‌ای که نباید لیست شوند (از BASE_DIR حساب می‌شوند)
-EXCLUDE_DIRS = [
-    ".git",
-    "logs",
-    "venv",
-    "webbundle",
-    os.path.join("app", "xraymgr", "__pycache__"),
+# فقط همین ریشه‌ها را لیست می‌کنیم (مطابق خروجی‌ای که قبلاً دادی)
+INCLUDE_ROOTS = [
+    "app",
+    "data",
+    "doc",
+    "scripts/install.sh",  # فقط همین فایل لازم است
 ]
 
+# این‌ها را نمی‌خواهی
+EXCLUDE_DIR_PREFIXES = [
+    ".venv/",
+    "data/sources/",
+    "data/raw/",
+]
 
-def is_excluded(path: str) -> bool:
+# نویزهای رایج
+EXCLUDE_DIR_NAMES = {".git", "__pycache__"}
+EXCLUDE_FILE_NAMES = {"filelist.txt"}  # خودِ خروجی را داخل لیست نیاور
+
+
+def _to_posix(rel: Path) -> str:
+    return rel.as_posix().lstrip("./")
+
+
+def _is_excluded_dir(rel_posix: str) -> bool:
+    if any(rel_posix.startswith(p) for p in EXCLUDE_DIR_PREFIXES):
+        return True
+    # هر سگمنت اگر یکی از نام‌های نویز بود
+    parts = rel_posix.split("/")
+    return any(p in EXCLUDE_DIR_NAMES for p in parts if p)
+
+
+def _walk_dirs_and_files(root: Path) -> tuple[list[str], list[str]]:
     """
-    بر اساس مسیر کامل، تشخیص می‌دهد که این مسیر یا زیرشاخه‌هایش باید نادیده گرفته شوند یا نه.
+    برمی‌گرداند:
+      - dirs: لیست مسیرهای دایرکتوری (نسبت به repo root) به شکل posix
+      - files: لیست مسیرهای فایل (نسبت به repo root) به شکل posix
     """
-    rel = os.path.relpath(path, BASE_DIR)
-    rel = rel.replace("\\", "/")
+    dirs: list[str] = []
+    files: list[str] = []
 
-    for ex in EXCLUDE_DIRS:
-        ex_norm = ex.replace("\\", "/")
-        if rel == ex_norm or rel.startswith(ex_norm + "/"):
-            return True
-    return False
+    repo_root = Path(__file__).resolve().parent
 
+    if root.is_file():
+        rel = root.relative_to(repo_root)
+        rel_posix = _to_posix(rel)
+        if Path(rel_posix).name not in EXCLUDE_FILE_NAMES:
+            files.append(rel_posix)
+        return dirs, files
 
-def main():
-    # دیکشنری برای حذف موارد تکراری
-    # key = مسیر نسبی از BASE_DIR، value = نوع ('d' یا 'f')
-    entries: dict[str, str] = {}
-
-    # 1) همه‌ی پوشه‌ها زیر /opt/xraymgr  (مثل find -type d)
-    for root, dirs, files in os.walk(BASE_DIR):
-        if is_excluded(root):
-            dirs[:] = []
+    # دایرکتوری
+    for p in root.rglob("*"):
+        try:
+            rel = p.relative_to(repo_root)
+        except ValueError:
             continue
 
-        dirs[:] = [d for d in dirs if not is_excluded(os.path.join(root, d))]
+        rel_posix = _to_posix(rel)
 
-        rel_root = os.path.relpath(root, BASE_DIR)
-        if rel_root == ".":
-            entries["."] = "d"
-        else:
-            entries[rel_root.replace("\\", "/")] = "d"
-
-    # 2) فقط فایل‌های .py و .sql در /opt/xraymgr/app/xraymgr و زیرشاخه‌ها
-    if os.path.isdir(APP_XRAYMGR_DIR):
-        for root, dirs, files in os.walk(APP_XRAYMGR_DIR):
-            if is_excluded(root):
-                dirs[:] = []
+        # فیلتر دایرکتوری‌های ناخواسته
+        if p.is_dir():
+            if _is_excluded_dir(rel_posix + "/"):
                 continue
-            dirs[:] = [d for d in dirs if not is_excluded(os.path.join(root, d))]
+            dirs.append(rel_posix)
+            continue
 
-            for fname in files:
-                full_path = os.path.join(root, fname)
-                if is_excluded(full_path):
-                    continue
-                if fname.endswith((".py", ".sql")):
-                    rel_path = os.path.relpath(full_path, BASE_DIR)
-                    entries[rel_path.replace("\\", "/")] = "f"
-
-    # 3) در پوشه‌ی data هر چی هست (فایل و پوشه)
-    if os.path.isdir(DATA_DIR):
-        for root, dirs, files in os.walk(DATA_DIR):
-            if is_excluded(root):
-                dirs[:] = []
+        # فایل
+        if p.is_file():
+            # اگر داخل مسیرهای حذف‌شده افتاد، رد کن
+            parent_posix = _to_posix(rel.parent)
+            if parent_posix and _is_excluded_dir(parent_posix + "/"):
                 continue
-            dirs[:] = [d for d in dirs if not is_excluded(os.path.join(root, d))]
-
-            # خود دایرکتوری جاری
-            rel_root = os.path.relpath(root, BASE_DIR)
-            entries[rel_root.replace("\\", "/")] = "d"
-
-            # فایل‌های داخلش
-            for fname in files:
-                full_path = os.path.join(root, fname)
-                if is_excluded(full_path):
-                    continue
-                rel_path = os.path.relpath(full_path, BASE_DIR)
-                entries[rel_path.replace("\\", "/")] = "f"
-
-    # 4) فایل‌های front پنل در web_static (index.html / dashboard.js / dashboard.css)
-    if os.path.isdir(WEB_STATIC_DIR):
-        for fname in ("index.html", "dashboard.js", "dashboard.css"):
-            full_path = os.path.join(WEB_STATIC_DIR, fname)
-            if not os.path.isfile(full_path):
+            if p.name in EXCLUDE_FILE_NAMES:
                 continue
-            if is_excluded(full_path):
-                continue
-            rel_path = os.path.relpath(full_path, BASE_DIR)
-            entries[rel_path.replace("\\", "/")] = "f"
+            files.append(rel_posix)
 
-    # 5) فقط فایل‌های .txt و .text در /opt/xraymgr/doc و زیرشاخه‌ها
-    if os.path.isdir(DOC_DIR):
-        for root, dirs, files in os.walk(DOC_DIR):
-            if is_excluded(root):
-                dirs[:] = []
-                continue
-            dirs[:] = [d for d in dirs if not is_excluded(os.path.join(root, d))]
+    # مرتب‌سازی پایدار
+    dirs = sorted(set(dirs))
+    files = sorted(set(files))
+    return dirs, files
 
-            for fname in files:
-                full_path = os.path.join(root, fname)
-                if is_excluded(full_path):
-                    continue
-                if fname.endswith((".txt", ".text")):
-                    rel_path = os.path.relpath(full_path, BASE_DIR)
-                    entries[rel_path.replace("\\", "/")] = "f"
 
-    # تبدیل مسیر نسبی به URL گیت‌هاب
-    def to_github_url(path: str, kind: str) -> str:
-        if kind == "d":
-            if path == ".":
-                return GITHUB_TREE_BASE
-            base = GITHUB_TREE_BASE
-        else:
-            base = GITHUB_RAW_BASE
+def main() -> int:
+    repo_root = Path(__file__).resolve().parent
 
-        norm_path = path.replace("\\", "/").lstrip("/")
-        return base + norm_path
+    all_dirs: list[str] = []
+    all_files: list[str] = []
 
-    # نوشتن خروجی مرتب شده بر اساس مسیر
-    with open(OUTPUT_FILE, "w", encoding="utf-8") as f:
-        for path in sorted(entries.keys()):
-            kind = entries[path]
-            url = to_github_url(path, kind)
-            f.write(f"{kind} {url}\n")
+    for item in INCLUDE_ROOTS:
+        target = repo_root / item
+        if not target.exists():
+            continue
 
-    print(f"تمام شد. {len(entries)} مورد در فایل {OUTPUT_FILE} نوشته شد.")
+        dirs, files = _walk_dirs_and_files(target)
+
+        # اگر خودِ ریشه یک دایرکتوری است، خودش را هم اضافه کن
+        if target.is_dir():
+            rel_root = _to_posix(target.relative_to(repo_root))
+            if rel_root and not _is_excluded_dir(rel_root + "/"):
+                all_dirs.append(rel_root)
+
+        all_dirs.extend(dirs)
+        all_files.extend(files)
+
+    all_dirs = sorted(set(all_dirs))
+    all_files = sorted(set(all_files))
+
+    lines: list[str] = []
+    for d in all_dirs:
+        lines.append(f"d {TREE_BASE}/{d}")
+    for f in all_files:
+        lines.append(f"f {RAW_BASE}/{f}")
+
+    # خروجی دقیقاً در همان جایی که اسکریپت اجرا می‌شود (CWD)
+    out_path = Path.cwd() / "filelist.txt"
+    out_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+    print(str(out_path))
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())
