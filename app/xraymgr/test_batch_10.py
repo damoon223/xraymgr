@@ -57,7 +57,7 @@ def sqlite_ts(dt: datetime) -> str:
     return dt.astimezone(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
 
 
-def oneline(s: str, n: int = 240) -> str:
+def oneline(s: str, n: int = 200) -> str:
     s = " ".join((s or "").replace("\r", " ").replace("\n", " ").replace("\t", " ").split())
     return s if len(s) <= n else s[: n - 3] + "..."
 
@@ -126,7 +126,6 @@ def _ensure_columns(conn: sqlite3.Connection, table: str, wanted: Dict[str, str]
 
 
 def ensure_schema_minimal(conn: sqlite3.Connection) -> None:
-    # لازم‌ها برای اینکه تست بچرخد و نتیجه‌ها ذخیره شود.
     if not table_exists(conn, "links") or not table_exists(conn, "inbound"):
         raise RuntimeError("required tables missing: links/inbound")
 
@@ -172,7 +171,6 @@ def ensure_schema_minimal(conn: sqlite3.Connection) -> None:
         },
     )
 
-    # ایندکس‌های حداقلی
     cur = conn.cursor()
     try:
         cur.execute("CREATE INDEX IF NOT EXISTS idx_links_test_status ON links(test_status)")
@@ -190,15 +188,12 @@ def _links_where_parts(links_cols: set[str], now_s: str) -> Tuple[str, List[Any]
     where = []
     params: List[Any] = []
 
-    # primary
     if "is_config_primary" in links_cols:
         where.append("COALESCE(is_config_primary,0)=1")
 
-    # json presence
     if "config_json" in links_cols:
         where += ["config_json IS NOT NULL", "TRIM(config_json)<>''"]
 
-    # health
     if "is_invalid" in links_cols:
         where.append("COALESCE(is_invalid,0)=0")
     if "needs_replace" in links_cols:
@@ -206,11 +201,9 @@ def _links_where_parts(links_cols: set[str], now_s: str) -> Tuple[str, List[Any]
     if "is_protocol_unsupported" in links_cols:
         where.append("COALESCE(is_protocol_unsupported,0)=0")
 
-    # in-use guard
     if "is_in_use" in links_cols:
         where.append("COALESCE(is_in_use,0)=0")
 
-    # lock
     if "test_status" in links_cols and "test_lock_until" in links_cols:
         where.append(
             "(test_status='idle' OR test_status IS NULL OR "
@@ -221,7 +214,7 @@ def _links_where_parts(links_cols: set[str], now_s: str) -> Tuple[str, List[Any]
         where.append("(test_lock_until IS NULL OR test_lock_until < ?)")
         params.append(now_s)
 
-    return " AND ".join(where) if where else "1=1", params
+    return (" AND ".join(where) if where else "1=1"), params
 
 
 def count_eligible_links(conn: sqlite3.Connection, links_cols: set[str]) -> int:
@@ -248,11 +241,8 @@ def select_links(
     lock_until = sqlite_ts(now + timedelta(seconds=int(lock_timeout)))
 
     where, params = _links_where_parts(links_cols, now_s)
-
     order = (
-        "COALESCE(last_test_at,'1970-01-01 00:00:00') ASC, id ASC"
-        if "last_test_at" in links_cols
-        else "id ASC"
+        "COALESCE(last_test_at,'1970-01-01 00:00:00') ASC, id ASC" if "last_test_at" in links_cols else "id ASC"
     )
 
     rows = conn.execute(
@@ -260,7 +250,6 @@ def select_links(
         tuple(params + [int(limit)]),
     ).fetchall()
 
-    # lock کردن انتخاب‌ها
     for r in rows:
         lid = int(r["id"])
         sets, args = [], []
@@ -278,10 +267,10 @@ def select_links(
         if "test_batch_id" in links_cols:
             sets.append("test_batch_id=?")
             args.append(batch_id)
+
         if sets:
             args.append(lid)
             conn.execute(f"UPDATE links SET {', '.join(sets)} WHERE id=?", tuple(args))
-
     return rows
 
 
@@ -335,6 +324,50 @@ def release_inbound(conn: sqlite3.Connection, inbound_id: Optional[int]) -> None
             "UPDATE inbound SET link_id=NULL,outbound_tag=NULL,is_active=0,status='new',last_test_at=? WHERE id=?",
             (sqlite_ts(utc_now()), int(inbound_id)),
         )
+
+
+def _cleanup_stale_link_bindings_for_ports(
+    conn: sqlite3.Connection,
+    links_cols: set[str],
+    ports: Sequence[int],
+    tag_prefix: str,
+) -> int:
+    ports_i = [int(p) for p in ports]
+    tags = [f"{tag_prefix}{int(p)}" for p in ports_i]
+
+    where_parts: List[str] = []
+    params: List[Any] = []
+
+    if "inbound_tag" in links_cols:
+        where_parts.append(f"inbound_tag IN ({','.join(['?'] * len(tags))})")
+        params.extend(tags)
+
+    if "bound_port" in links_cols:
+        where_parts.append(f"bound_port IN ({','.join(['?'] * len(ports_i))})")
+        params.extend(ports_i)
+
+    if not where_parts:
+        return 0
+
+    sets: List[str] = []
+    if "is_in_use" in links_cols:
+        sets.append("is_in_use=0")
+    if "bound_port" in links_cols:
+        sets.append("bound_port=NULL")
+    if "inbound_tag" in links_cols:
+        sets.append("inbound_tag=NULL")
+    if "outbound_tag" in links_cols:
+        sets.append("outbound_tag=NULL")
+
+    if not sets:
+        return 0
+
+    sql = f"UPDATE links SET {', '.join(sets)} WHERE ({' OR '.join(where_parts)})"
+    cur = conn.execute(sql, tuple(params))
+    try:
+        return int(cur.rowcount or 0)
+    except Exception:
+        return 0
 
 
 def mark_link_bound(
@@ -421,7 +454,6 @@ def update_result(
     if (not ok) and mark_proto_unsupported and ("is_protocol_unsupported" in links_cols):
         sets.append("is_protocol_unsupported=1")
 
-    # فقط در حالت OK مقادیر ipinfo را آپدیت کن (در fail قبلی‌ها حفظ شوند)
     if ok:
         if "ip" in links_cols and ip is not None:
             sets.append("ip=?")
@@ -490,7 +522,15 @@ def classify_prep_error(raw: str) -> Tuple[str, bool]:
 
 
 def run_check(check_py: Path, *, socks5: str, timeout_sec: int) -> Dict[str, Any]:
-    cmd = [sys.executable or "python3", "-u", str(check_py), "--timeout", str(int(timeout_sec)), "--socks5", socks5]
+    cmd = [
+        sys.executable or "python3",
+        "-u",
+        str(check_py),
+        "--timeout",
+        str(int(timeout_sec)),
+        "--socks5",
+        socks5,
+    ]
     try:
         p = subprocess.Popen(
             cmd,
@@ -565,6 +605,7 @@ def check_code(res: Dict[str, Any]) -> str:
         "spawn_failed": "spawn",
         "check_host_exit_nonzero": "fail",
         "unexpected_error": "fail",
+        "resolve_failed": "resolve",
     }
     return oneword(m.get(et, et or "fail"))
 
@@ -588,18 +629,8 @@ def extract_ip_fields(res: Dict[str, Any]) -> Tuple[Optional[str], Optional[str]
     return ip, country, city, dc
 
 
-def log_ok(idx: int, link_id: int, ip: Optional[str], country: Optional[str], city: Optional[str], dc: Optional[str]) -> None:
-    print(f"OK idx={idx} link={link_id} ip={ip or '-'} country={country or '-'} city={city or '-'} dc={dc or '-'}")
-    sys.stdout.flush()
-
-
-def log_fail(idx: int, link_id: int, reason: str) -> None:
-    print(f"FAIL idx={idx} link={link_id} reason={oneword(reason)}")
-    sys.stdout.flush()
-
-
-def log_progress(eligible: int, tested: int, ok: int, fail: int) -> None:
-    print(f"PROGRESS eligible={eligible} tested={tested} ok={ok} fail={fail}")
+def p(line: str) -> None:
+    print(line)
     sys.stdout.flush()
 
 
@@ -643,10 +674,9 @@ def run_batch(
         try:
             ensure_test_inbounds(c, ports, tag_prefix)
             clear_test_inbounds(c, ports)
+            cleaned = _cleanup_stale_link_bindings_for_ports(c, lcols, ports, tag_prefix)
             inbounds = fetch_inbounds(c, ports)
-
             links = select_links(c, lcols, limit=count, batch_id=batch_id, owner=owner, lock_timeout=lock_timeout)
-
             n = min(len(inbounds), len(links))
             inbounds, links = inbounds[:n], links[:n]
             c.commit()
@@ -654,8 +684,12 @@ def run_batch(
             c.rollback()
             raise
 
-    if not inbounds or not links:
-        return False, {"status": "idle", "eligible": eligible_total, "tested": 0, "ok": 0, "fail": 0}
+    tested = 0
+    ok = 0
+    fail = 0
+    prog_lock = threading.Lock()
+
+    p(f"PROGRESS eligible={eligible_total} tested={tested} ok={ok} fail={fail}")
 
     applier = XrayRuntimeApplier(
         xray_bin=xray_bin,
@@ -668,23 +702,6 @@ def run_batch(
     created_out: List[str] = []
     created_in: List[str] = []
     created_rules: List[str] = []
-
-    prog = {"eligible": int(eligible_total), "tested": 0, "ok": 0, "fail": 0}
-    prog_lock = threading.Lock()
-
-    def reporter() -> None:
-        last = 0.0
-        while True:
-            if _STOP.is_set() or stop_file_exists(stop_file):
-                return
-            time.sleep(1.0)
-            t = time.time()
-            if t - last >= 10.0:
-                last = t
-                with prog_lock:
-                    log_progress(prog["eligible"], prog["tested"], prog["ok"], prog["fail"])
-
-    threading.Thread(target=reporter, daemon=True).start()
 
     jobs: List[Tuple[int, int, int, str, int, str, str]] = []
 
@@ -701,12 +718,12 @@ def run_batch(
             inbound_id = int(inb["id"])
             port = int(inb["port"])
             inbound_tag = str(inb["tag"])
-
             out_tag = f"xT_{uuid.uuid4().hex[:10]}"
             rule_tag = f"rT_{uuid.uuid4().hex[:10]}"
 
             try:
-                ob = sanitize_outbound(parse_outbound(str(lnk["config_json"] or "")))
+                base_ob = sanitize_outbound(parse_outbound(str(lnk["config_json"] or "")))
+                ob = dict(base_ob)
                 ob["tag"] = out_tag
             except Exception:
                 u.execute("BEGIN IMMEDIATE")
@@ -718,7 +735,7 @@ def run_batch(
                 except Exception:
                     u.rollback()
                     raise
-                log_fail(idx, link_id, "parse")
+                p(f"FAIL idx={idx} link={link_id} reason=parse")
                 continue
 
             r1 = applier.add_outbound(ob)
@@ -734,8 +751,9 @@ def run_batch(
                 except Exception:
                     u.rollback()
                     raise
-                log_fail(idx, link_id, code)
+                p(f"FAIL idx={idx} link={link_id} reason={oneword(code)}")
                 continue
+
             created_out.append(out_tag)
 
             r2 = applier.add_inbound(socks_inbound(inbound_tag, socks_listen, port, socks_user, socks_pass))
@@ -756,8 +774,10 @@ def run_batch(
                 except Exception:
                     u.rollback()
                     raise
-                log_fail(idx, link_id, "xray")
+
+                p(f"FAIL idx={idx} link={link_id} reason=xray")
                 continue
+
             created_in.append(inbound_tag)
 
             rr = applier.apply_rules({"routing": {"rules": [rule(rule_tag, inbound_tag, out_tag)]}}, append=True)
@@ -784,50 +804,105 @@ def run_batch(
                 except Exception:
                     u.rollback()
                     raise
-                log_fail(idx, link_id, "rule")
+
+                p(f"FAIL idx={idx} link={link_id} reason=rule")
                 continue
+
             created_rules.append(rule_tag)
 
             u.execute("BEGIN IMMEDIATE")
             try:
                 bind_inbound(u, inbound_id, link_id, out_tag)
-                mark_link_bound(u, lcols, link_id=link_id, inbound_tag=inbound_tag, outbound_tag=out_tag, port=port)
+                try:
+                    mark_link_bound(u, lcols, link_id=link_id, inbound_tag=inbound_tag, outbound_tag=out_tag, port=port)
+                except sqlite3.IntegrityError as e:
+                    msg = str(e).lower()
+                    if "unique constraint failed" in msg and "links.inbound_tag" in msg:
+                        _cleanup_stale_link_bindings_for_ports(u, lcols, ports, tag_prefix)
+                        mark_link_bound(u, lcols, link_id=link_id, inbound_tag=inbound_tag, outbound_tag=out_tag, port=port)
+                    else:
+                        raise
                 u.commit()
             except Exception:
                 u.rollback()
-                raise
+                try:
+                    applier.remove_rules([rule_tag], ignore_not_found=True)
+                except Exception:
+                    pass
+                try:
+                    applier.remove_inbound(inbound_tag, ignore_not_found=True)
+                except Exception:
+                    pass
+                try:
+                    applier.remove_outbound(out_tag, ignore_not_found=True)
+                except Exception:
+                    pass
+                if rule_tag in created_rules:
+                    created_rules.remove(rule_tag)
+                if inbound_tag in created_in:
+                    created_in.remove(inbound_tag)
+                if out_tag in created_out:
+                    created_out.remove(out_tag)
+
+                u.execute("BEGIN IMMEDIATE")
+                try:
+                    update_result(u, lcols, link_id=link_id, ok=False, code="bind")
+                    release_inbound(u, inbound_id)
+                    unlock_link(u, lcols, link_id)
+                    u.commit()
+                except Exception:
+                    u.rollback()
+                    raise
+                p(f"FAIL idx={idx} link={link_id} reason=bind")
+                continue
 
             jobs.append((idx, link_id, inbound_id, inbound_tag, port, out_tag, rule_tag))
 
     if not jobs:
         return True, {"status": "ok", "eligible": eligible_total, "tested": 0, "ok": 0, "fail": 0}
 
-    def do_one(j: Tuple[int, int, int, str, int, str, str]) -> Dict[str, Any]:
-        idx, link_id, inbound_id, inbound_tag, port, out_tag, rule_tag = j
-        if _STOP.is_set() or stop_file_exists(stop_file):
-            return {"idx": idx, "link_id": link_id, "inbound_id": inbound_id, "skipped": True, "why": _STOP_REASON or "stop"}
+    def progress_thread() -> None:
+        last = 0.0
+        while True:
+            if _STOP.is_set() or stop_file_exists(stop_file):
+                return
+            time.sleep(1.0)
+            t = time.time()
+            if t - last >= 10.0:
+                last = t
+                with prog_lock:
+                    p(f"PROGRESS eligible={eligible_total} tested={tested} ok={ok} fail={fail}")
 
+    threading.Thread(target=progress_thread, daemon=True).start()
+
+    def do_one(job: Tuple[int, int, int, str, int, str, str]) -> Dict[str, Any]:
+        idx, link_id, inbound_id, inbound_tag, port, out_tag, rule_tag = job
         socks5 = f"socks5h://{socks_user}:{socks_pass}@127.0.0.1:{port}"
+
+        # این خط باعث میشه پنل «بدونه الان چی داره تست میشه»
+        p(f"TEST idx={idx} link={link_id} port={port}")
+
+        if _STOP.is_set() or stop_file_exists(stop_file):
+            return {"skipped": True, "idx": idx, "link_id": link_id, "inbound_id": inbound_id, "reason": _STOP_REASON or "stop"}
+
         res = run_check(check_py, socks5=socks5, timeout_sec=check_timeout)
+        status = str(res.get("status") or "").lower()
+        reason = check_code(res)
 
-        if str(res.get("error_type") or "").strip().lower() in ("stopped", "stop"):
-            return {"idx": idx, "link_id": link_id, "inbound_id": inbound_id, "skipped": True, "why": _STOP_REASON or "stop"}
-
-        if str(res.get("status") or "").lower() == "ok":
+        if status == "ok":
             ip, country, city, dc = extract_ip_fields(res)
-            return {"idx": idx, "link_id": link_id, "inbound_id": inbound_id, "ok": True, "ip": ip, "country": country, "city": city, "dc": dc}
+            return {"skipped": False, "ok": True, "idx": idx, "link_id": link_id, "inbound_id": inbound_id, "ip": ip, "country": country, "city": city, "dc": dc}
 
-        return {"idx": idx, "link_id": link_id, "inbound_id": inbound_id, "ok": False, "reason": check_code(res)}
+        return {"skipped": False, "ok": False, "idx": idx, "link_id": link_id, "inbound_id": inbound_id, "reason": reason}
 
     with ThreadPoolExecutor(max_workers=int(parallel)) as ex:
-        futs = [ex.submit(do_one, j) for j in jobs]
-        for fut in as_completed(futs):
+        futures = [ex.submit(do_one, j) for j in jobs]
+        for fut in as_completed(futures):
             r = fut.result()
+            idx = int(r["idx"])
             link_id = int(r["link_id"])
             inbound_id = int(r["inbound_id"])
-            idx = int(r["idx"])
 
-            # STOP => fail محسوب نشود؛ فقط آزادسازی
             if r.get("skipped"):
                 with db_connect(db_path) as u:
                     ensure_schema_minimal(u)
@@ -842,14 +917,14 @@ def run_batch(
                         raise
                 continue
 
-            ok = bool(r.get("ok", False))
+            ok1 = bool(r.get("ok", False))
 
             with db_connect(db_path) as u:
                 ensure_schema_minimal(u)
                 lcols = set(cols(u, "links"))
                 u.execute("BEGIN IMMEDIATE")
                 try:
-                    if ok:
+                    if ok1:
                         update_result(
                             u,
                             lcols,
@@ -863,7 +938,6 @@ def run_batch(
                         )
                     else:
                         update_result(u, lcols, link_id=link_id, ok=False, code=str(r.get("reason") or "fail"))
-
                     release_inbound(u, inbound_id)
                     unlock_link(u, lcols, link_id)
                     u.commit()
@@ -872,16 +946,23 @@ def run_batch(
                     raise
 
             with prog_lock:
-                prog["tested"] += 1
-                if ok:
-                    prog["ok"] += 1
+                tested += 1
+                if ok1:
+                    ok += 1
                 else:
-                    prog["fail"] += 1
+                    fail += 1
 
-            if ok:
-                log_ok(idx, link_id, r.get("ip"), r.get("country"), r.get("city"), r.get("dc"))
+            if ok1:
+                p(
+                    "OK "
+                    f"idx={idx} link={link_id} "
+                    f"ip={r.get('ip') or '-'} "
+                    f"country={r.get('country') or '-'} "
+                    f"city={r.get('city') or '-'} "
+                    f"dc={r.get('dc') or '-'}"
+                )
             else:
-                log_fail(idx, link_id, str(r.get("reason") or "fail"))
+                p(f"FAIL idx={idx} link={link_id} reason={oneword(str(r.get('reason') or 'fail'))}")
 
     # cleanup runtime resources
     try:
@@ -901,9 +982,7 @@ def run_batch(
             pass
 
     with prog_lock:
-        rep = {"status": "ok", "eligible": prog["eligible"], "tested": prog["tested"], "ok": prog["ok"], "fail": prog["fail"]}
-    print(f"SUMMARY tested={rep['tested']} ok={rep['ok']} fail={rep['fail']}")
-    sys.stdout.flush()
+        rep = {"status": "ok", "eligible": eligible_total, "tested": tested, "ok": ok, "fail": fail}
     return True, rep
 
 
@@ -931,17 +1010,13 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     ap.add_argument("--max-batches", type=int, default=0)
     ap.add_argument("--continuous", action="store_true")
     ap.add_argument("--once", action="store_true")
-    # backward-compat: این گزینه نگه داشته می‌شود ولی دیگر هیچ فایلی نوشته نمی‌شود
-    ap.add_argument("--report-file", default="")  # ignored
-    ap.add_argument("--data-dir", default="")  # ignored
     a = ap.parse_args(argv)
 
-    # default: continuous
     continuous = bool(a.continuous) or (not bool(a.once))
+
     db_path = resolve_db_path(a.db)
     count = max(1, int(a.count or 100))
     parallel = max(1, int(a.parallel or 10))
-
     run_id = (str(a.run_id).strip() or uuid.uuid4().hex)
 
     stop_file = (str(a.stop_file).strip() or "")
