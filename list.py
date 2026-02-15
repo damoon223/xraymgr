@@ -26,6 +26,7 @@ EXCLUDE_DIR_PREFIXES = [
     ".venv/",
     "data/sources/",
     "data/raw/",
+    "app/xraymgr/webbundle/",
 ]
 
 # نویزهای رایج
